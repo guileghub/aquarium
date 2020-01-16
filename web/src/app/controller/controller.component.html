@@ -1,4 +1,14 @@
 <mat-form-field>
-	<label>Temperatura desejada:</label>
-	<input type="number" matInput [(ngModel)]="temperature" min="20" max="110" step="1">
+	<!-- <mat-checkbox [(ngModel)]="habilitado">{{habilitado?'Ligado':'Desligado'}}</mat-checkbox> -->
+	<mat-radio-group [(ngModel)]="modo">
+  		<mat-radio-button value="0">Desligado</mat-radio-button><br>
+  		<mat-radio-button value="1">Ligado</mat-radio-button><br>
+  		<mat-radio-button value="2">Controle</mat-radio-button><br>
+	</mat-radio-group>
+	<br>
+	<div [hidden]="modo!='2'">
+		<label>Temperatura desejada:</label>
+		<input type="number" matInput [(ngModel)]="temperature" min="20" max="110" step="1">
+	</div>
 </mat-form-field>
+<!-- {{modo|json}} -->

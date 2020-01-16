@@ -8,6 +8,7 @@ import * as Controller from '../controller.service';
 })
 export class ControllerComponent implements OnInit {
 	temperature: number;
+	modo: string;
 	constructor(@Inject(Controller.ControllerService) public controller: Controller.ControllerService) {
 	}
 	ngOnInit() {
