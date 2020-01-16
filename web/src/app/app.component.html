@@ -1,0 +1,10 @@
+<div *ngIf="!controller.connected">
+	<mat-form-field>
+		<input type="text" matInput [(ngModel)]="baseUrl">
+	</mat-form-field>
+	<button mat-raised-button (click)="Connect()">Conectar</button>
+</div>
+<div *ngIf="controller.connected">
+<app-temperature-display  [temperatures]="controller.temperatures$"></app-temperature-display>
+<app-controller></app-controller>
+</div>
