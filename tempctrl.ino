@@ -3,6 +3,7 @@
 #include <AutoPID.h>
 #include <FS.h>
 #include <WebSocketsServer.h>
+#include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <Arduino_JSON.h>
 // https://github.com/arduino-libraries/Arduino_JSON/blob/master/examples/JSONObject/JSONObject.ino
@@ -12,6 +13,7 @@
 uint8_t socketNumber;
 ESP8266WebServer server(80);
 WebSocketsServer webSocket(81);
+DNSServer dnsServer;
 
 // Interno: 2840e363121901e2
 // Externo: 289a9a7512190146
@@ -42,7 +44,7 @@ AutoPIDRelay autopid(&current_temperature, &target_temperature, &relay, PWM_PERI
 void setupWiFi() {
   WiFi.mode(WIFI_AP);
   yield();
-  WiFi.softAP("TC", "B@r@lh@d@", 1, true);
+  WiFi.softAP("Cerva", "B@r@lh@d@");//, 1, true);
 }
 
 //Setting the temperature sensor
@@ -102,6 +104,7 @@ void setup() {
   IPAddress myIP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(myIP);
+  dnsServer.start(53, "*", myIP);
 
   server.on("/", HTTP_GET, []() {
     handleFileRead("/");
@@ -291,4 +294,5 @@ void loop() {
   digitalWrite(OUTPUT_PIN, output);
   server.handleClient();
   webSocket.loop();
+  dnsServer.processNextRequest();
 }
