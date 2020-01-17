@@ -32,13 +32,17 @@ const int cycle = 1000;
 #define KI .0003
 #define KD 0
 
-double temperature = 0, setPoint = 0;
+double current_temperature = 0, target_temperature = 0;
+bool pid_enabled = false;
 bool relay = false;
-AutoPIDRelay autopid(&temperature, &setPoint, &relay, PWM_PERIOD, KP, KI, KD);
+bool output = false;
+
+AutoPIDRelay autopid(&current_temperature, &target_temperature, &relay, PWM_PERIOD, KP, KI, KD);
+
 void setupWiFi() {
   WiFi.mode(WIFI_AP);
   yield();
-  WiFi.softAP("Controller", "C0ntr0lerP4$$", 1, true);
+  WiFi.softAP("TC", "B@r@lh@d@", 1, true);
 }
 
 //Setting the temperature sensor
@@ -137,8 +141,10 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload,
       }
 
     case WStype_TEXT:
-      if (payload[0] == '#') {
+      {
         Serial.printf("[%u] get Text: %s\n", num, payload);
+        String message((char*)payload);
+        parse_message(message);
         yield();
       }
       break;
@@ -186,7 +192,7 @@ bool handleFileRead(String path) {
   Serial.println("handleFileRead: " + path);
 
   if (path.endsWith("/")) {
-    path += "counter.html";
+    path += "index.html";
   }
 
   String contentType = getContentType(path);
@@ -215,6 +221,49 @@ String GetAddressToString(DeviceAddress deviceAddress) {
   return str;
 }
 
+void send_update() {
+  String message = "{ \"currentTemperature\" :";
+  message += current_temperature;
+  if (pid_enabled) {
+    message += ", \"targetTemperature\" :";
+    message += target_temperature;
+  }
+  message += ", \"power\" :";
+  message += output?"true":"false";
+  message += "}";
+  webSocket.sendTXT(socketNumber, message);
+}
+
+void parse_message(String m) {
+  Serial.println(String("parse_message") + m);
+  JSONVar message = JSON.parse(m);
+  if (JSON.typeof(message) != "object") {
+    Serial.println("Erro: " + m);
+    return;
+  }
+  if (message.hasOwnProperty("targetTemperature")) {
+    JSONVar targetTemperature = message["targetTemperature"];
+    if (!(JSON.typeof(targetTemperature) == "number")) {
+      Serial.println("Error, targetTemperature is not an number");
+      return;
+    }
+    target_temperature = (double)targetTemperature;
+    pid_enabled = true;
+    Serial.println(String("targetTemperature=> pid_enabled=") + pid_enabled + ", output=" + output);
+    return;
+  }
+  if (message.hasOwnProperty("power")) {
+    JSONVar power = message["power"];
+    if (!(JSON.typeof(power) == "boolean")) {
+      Serial.println("Error, power is not an boolean");
+      return;
+    }
+    pid_enabled = false;
+    output = (bool) power;
+    Serial.println(String("POWER=> pid_enabled=") + pid_enabled + ", output=" + output);
+    return;
+  }
+}
 //Loop measuring the temperature
 void TempLoop(long now) {
   if (now - lastTemp > cycle) {
@@ -222,11 +271,8 @@ void TempLoop(long now) {
       float tempC = DS18B20.getTempC(devAddr[i]); //Measuring temperature in Celsius
       tempDev[i] = tempC; //Save the measured value to the array
       if (i == 0) {
-        String temp_str = String(tempC);
-        webSocket.sendTXT(socketNumber,
-                          "{ \"temperature\" :" + temp_str + "}");
-        Serial.print("Temp C: ");
-        Serial.println(tempC);
+        current_temperature = tempC;
+        send_update();
       }
     }
     DS18B20.setWaitForConversion(false); //No waiting for measurement
@@ -238,9 +284,11 @@ void TempLoop(long now) {
 void loop() {
   unsigned long t = millis();
   TempLoop(t);
-  autopid.run();
-  digitalWrite(OUTPUT_PIN, relay);
-  //Serial.println("Saida: " + relay);
+  if (pid_enabled) {
+    autopid.run();
+    output = relay;
+  }
+  digitalWrite(OUTPUT_PIN, output);
   server.handleClient();
   webSocket.loop();
 }

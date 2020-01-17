@@ -1,6 +1,6 @@
 <mat-form-field>
 	<!-- <mat-checkbox [(ngModel)]="habilitado">{{habilitado?'Ligado':'Desligado'}}</mat-checkbox> -->
-	<mat-radio-group [(ngModel)]="modo">
+	<mat-radio-group [(ngModel)]="modo" (change)="Change($event)">
   		<mat-radio-button value="0">Desligado</mat-radio-button><br>
   		<mat-radio-button value="1">Ligado</mat-radio-button><br>
   		<mat-radio-button value="2">Controle</mat-radio-button><br>
@@ -8,7 +8,9 @@
 	<br>
 	<div [hidden]="modo!='2'">
 		<label>Temperatura desejada:</label>
-		<input type="number" matInput [(ngModel)]="temperature" min="20" max="110" step="1">
+		<input type="number" matInput [(ngModel)]="desiredTemperature" min="0" max="100" step="1" (change)="Change($event)">
 	</div>
 </mat-form-field>
+<span *ngIf="power===true">⚡</span>
 <!-- {{modo|json}} -->
+<!-- {{status$|async|json}} -->

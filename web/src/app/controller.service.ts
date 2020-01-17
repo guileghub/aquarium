@@ -2,6 +2,12 @@ import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
 import { webSocket, WebSocketSubject } from "rxjs/webSocket";
 
+export interface Status {
+	targetTemperature?: number;
+	currentTemperature?: number;
+	power?: boolean;
+}
+
 @Injectable({
 	providedIn: 'root'
 })
@@ -9,8 +15,8 @@ import { webSocket, WebSocketSubject } from "rxjs/webSocket";
 export class ControllerService {
 	connected: boolean = false;
 	subject: WebSocketSubject<any>;
-	temperatures = new Subject<number>();
-	temperatures$ = this.temperatures.asObservable();
+	status = new Subject<Status>();
+	status$ = this.status.asObservable();
 	constructor() { }
 	connect(url: string) {
 		this.subject = webSocket({
@@ -35,12 +41,16 @@ export class ControllerService {
 			() => console.log('complete')
 		);
 	}
-	Parse(message: any) {
+	Parse(message: Status) {
 		//console.warn(message);
-		if (typeof (message.temperature) == 'number') {
-			this.temperatures.next(message.temperature);
+		if (typeof (message) == 'object') {
+			this.status.next(message);
 			return;
 		}
 		console.error(message);
+	}
+	SendMode(value: Status) {
+		this.subject.next(value);
+		//console.error(value);
 	}
 }

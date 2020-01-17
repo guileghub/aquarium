@@ -1,4 +1,4 @@
-import { Component, OnInit, Inject, Input } from '@angular/core';
+import { Component, OnInit, Input } from '@angular/core';
 import { Observable } from 'rxjs';
 
 @Component({
@@ -8,10 +8,10 @@ import { Observable } from 'rxjs';
 })
 
 export class TemperatureDisplayComponent implements OnInit {
-	temp: number;
 	@Input('temperatures') temperatures$: Observable<number>;
 	constructor() {
 	}
 	ngOnInit() {
+		this.temperatures$.subscribe(x=>{console.warn((x))});
 	}
 }
