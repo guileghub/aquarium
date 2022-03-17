@@ -3,29 +3,41 @@
 #include <AutoPID.h>
 #include <FS.h>
 #include <WebSocketsServer.h>
-#include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <Arduino_JSON.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+
 // https://github.com/arduino-libraries/Arduino_JSON/blob/master/examples/JSONObject/JSONObject.ino
 
-/* Go to http:// 192.168.4.1 in a web browser connected to this access point to see it. */
-
+const char* ssid = "Canopus";
+const char* password = "B@r@lh@d@";
+const char* hostname = "aquario";
+IPAddress local_IP = INADDR_NONE; //(192, 168, 15, 254);
+IPAddress gateway = INADDR_NONE; //(192, 168, 15, 1);
+IPAddress subnet = INADDR_NONE; //(255, 0, 0, 0);
+IPAddress primaryDNS = INADDR_NONE; //(192, 168, 15, 1);   //optional
+IPAddress secondaryDNS = INADDR_NONE; //(8, 8, 4, 4); //optional
 uint8_t socketNumber;
 ESP8266WebServer server(80);
 WebSocketsServer webSocket(81);
-DNSServer dnsServer;
-
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "br.pool.ntp.org", 3600, 60000);
 // Interno: 2840e363121901e2
 // Externo: 289a9a7512190146
-#define ONE_WIRE_BUS D4
+#define ONE_WIRE_BUS D2
 #define OUTPUT_PIN D5
-#define ONE_WIRE_MAX_DEV 2 //The maximum number of devices
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature DS18B20(&oneWire);
 int numberOfDevices;
-DeviceAddress devAddr[ONE_WIRE_MAX_DEV];
-float tempDev[ONE_WIRE_MAX_DEV]; //Saving the last measurement of temperature
-float tempDevLast[ONE_WIRE_MAX_DEV]; //Previous temperature measurement
+DeviceAddress *devAddr = 0;
+unsigned maxTemps = 7200;
+unsigned numTemps = 0;
+struct Temp {
+  unsigned char duracao;
+  unsigned char* medidas;
+};
+Temp *temps = 0;
 long lastTemp; //The last measurement
 const int cycle = 1000;
 
@@ -42,9 +54,20 @@ bool output = false;
 AutoPIDRelay autopid(&current_temperature, &target_temperature, &relay, PWM_PERIOD, KP, KI, KD);
 
 void setupWiFi() {
-  WiFi.mode(WIFI_AP);
-  yield();
-  WiFi.softAP("Cerva", "B@r@lh@d@");//, 1, true);
+  /*  if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
+      Serial.println("STA Failed to configure");
+    }*/
+  WiFi.setHostname(hostname);
+  Serial.println("");
+  Serial.println("WiFi connecting.");
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.print("Ready! Use 'http://");
+  Serial.print(WiFi.localIP());
+  Serial.println("' to connect");
 }
 
 //Setting the temperature sensor
@@ -61,8 +84,8 @@ void SetupDS18B20() {
   numberOfDevices = DS18B20.getDeviceCount();
   Serial.print("Device count: ");
   Serial.println(numberOfDevices);
-  if (numberOfDevices > ONE_WIRE_MAX_DEV)
-    numberOfDevices = ONE_WIRE_MAX_DEV;
+  if (numberOfDevices > 0)
+    devAddr = new DeviceAddress[numberOfDevices];
 
   lastTemp = millis();
   DS18B20.requestTemperatures();
@@ -70,7 +93,6 @@ void SetupDS18B20() {
   for (int i = 0; i < numberOfDevices; i++) {
     // Search the wire for address
     if (DS18B20.getAddress(devAddr[i], i)) {
-      //devAddr[i] = tempDeviceAddress;
       Serial.print("Found device ");
       Serial.print(i, DEC);
       Serial.print(" with address: " + GetAddressToString(devAddr[i]));
@@ -81,7 +103,6 @@ void SetupDS18B20() {
       Serial.print(
         " but could not detect address. Check power and cabling");
     }
-
     Serial.print("Resolution: ");
     Serial.print(DS18B20.getResolution(devAddr[i]));
     Serial.println();
@@ -93,18 +114,37 @@ void SetupPID() {
   autopid.setTimeStep(cycle);
 }
 
+void power_control(int port, bool val) {
+  char port_code;
+  switch (port) {
+    case 1:
+      port_code = '1';
+      break;
+    case 2:
+      port_code = '2';
+      break;
+    case 3:
+      port_code = '3';
+      break;
+    default:
+      port_code = '0'; // all
+  }
+  String cmd = "C";
+  cmd += port_code;
+  cmd += val ? '1' : '0';
+  Serial1.print(cmd);
+}
+
 void setup() {
   Serial.begin(115200);
+  Serial1.begin(9600);
   delay(1000);
   pinMode(OUTPUT_PIN, OUTPUT);
   SPIFFS.begin();
   Serial.println();
   Serial.print("Configuring access point...");
   setupWiFi();
-  IPAddress myIP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(myIP);
-  dnsServer.start(53, "*", myIP);
+  timeClient.begin();
 
   server.on("/", HTTP_GET, []() {
     handleFileRead("/");
@@ -232,7 +272,7 @@ void send_update() {
     message += target_temperature;
   }
   message += ", \"power\" :";
-  message += output?"true":"false";
+  message += output ? "true" : "false";
   message += "}";
   webSocket.sendTXT(socketNumber, message);
 }
@@ -272,7 +312,7 @@ void TempLoop(long now) {
   if (now - lastTemp > cycle) {
     for (int i = 0; i < numberOfDevices; i++) {
       float tempC = DS18B20.getTempC(devAddr[i]); //Measuring temperature in Celsius
-      tempDev[i] = tempC; //Save the measured value to the array
+      //tempDev[i] = tempC; //Save the measured value to the array
       if (i == 0) {
         current_temperature = tempC;
         send_update();
@@ -294,5 +334,18 @@ void loop() {
   digitalWrite(OUTPUT_PIN, output);
   server.handleClient();
   webSocket.loop();
-  dnsServer.processNextRequest();
+  timeClient.update();
+  /*
+    if (timeClient.isTimeSet())
+    Serial.print("NTP SET");
+    else
+    Serial.print("NTP ???");
+
+    if (hour == timeClient.getHours() && minute == timeClient.getMinutes()) {
+      digitalWrite(led, 0);
+    }
+    }
+  */
+  //Serial.println(timeClient.getFormattedTime());
+  //delay(100);
 }
