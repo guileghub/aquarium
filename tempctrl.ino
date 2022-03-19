@@ -57,6 +57,17 @@ int sched_output[SCHED_NUM] = { -1, -1, -1};
 
 AutoPIDRelay autopid(&current_temperature, &target_temperature, &relay, PWM_PERIOD, KP, KI, KD);
 
+void Log(String &m) {
+  Serial.println(m);
+  if (!connected)
+    return;
+  String message = "{ \"log\" :\"";
+  message += m;
+  m.clear();
+  message += "\"}";
+  webSocket.sendTXT(web_sock_number, message);
+}
+
 void setupWiFi() {
   /*  if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
       Serial.println("STA Failed to configure");
@@ -78,38 +89,41 @@ void setupWiFi() {
 void SetupDS18B20() {
   DS18B20.begin();
 
-  Serial.print("Parasite power is: ");
+  String log = "Parasite power is: ";
   if (DS18B20.isParasitePowerMode()) {
-    Serial.println("ON");
+    log += "ON";
   } else {
-    Serial.println("OFF");
+    log += "OFF";
   }
+  Log(log);
 
   numberOfDevices = DS18B20.getDeviceCount();
-  Serial.print("Device count: ");
-  Serial.println(numberOfDevices);
+  String log;
+  log += "Device count: ";
+  log += numberOfDevices;
+  Log(log);
   if (numberOfDevices > 0)
     devAddr = new DeviceAddress[numberOfDevices];
-
 
   DS18B20.requestTemperatures();
 
   for (int i = 0; i < numberOfDevices; i++) {
     // Search the wire for address
     if (DS18B20.getAddress(devAddr[i], i)) {
-      Serial.print("Found device ");
-      Serial.print(i, DEC);
-      Serial.print(" with address: " + GetAddressToString(devAddr[i]));
-      Serial.println();
+      log += "Found device ";
+      log += i;
+      log += "DEC";
+      log += " with address: " + GetAddressToString(devAddr[i]);
     } else {
-      Serial.print("Found ghost device at ");
-      Serial.print(i, DEC);
-      Serial.print(
-        " but could not detect address. Check power and cabling");
+      log += "Found ghost device at ";
+      log += i;
+      log += "DEC";
+      log +=
+        " but could not detect address. Check power and cabling";
     }
-    Serial.print("Resolution: ");
-    Serial.print(DS18B20.getResolution(devAddr[i]));
-    Serial.println();
+    log += " Resolution: ";
+    log += DS18B20.getResolution(devAddr[i]));
+    Log(log);
   }
 }
 
@@ -136,9 +150,10 @@ void power_control(int port, bool val) {
   String cmd = "C";
   cmd += port_code;
   cmd += val ? '1' : '0';
+  String log = "Sending command: ";
+  log += cmd;
+  Log(log);
   Serial1.print(cmd);
-  Serial.print("Sending command: ");
-  Serial.println(cmd);
 }
 
 void setup() {
@@ -267,7 +282,9 @@ bool handleFileRead(String path) {
     file.close();
     return true;
   }
-  Serial.println("File not found: " + path);
+  String log = "File not found: ";
+  log += path;
+  Log(log);
   yield();
   return false;
 }
@@ -305,7 +322,9 @@ void send_update() {
 }
 
 void parse_message(String m) {
-  Serial.println(String("parse_message") + m);
+  String log = "parse_message";
+  log += m;
+  Log(log);
   JSONVar message = JSON.parse(m);
   if (JSON.typeof(message) != "object") {
     Serial.println("Erro: " + m);
@@ -336,7 +355,7 @@ void parse_message(String m) {
 }
 
 void SchedLoop(long now) {
-  Serial.print("SchedLoop ");
+  log += "SchedLoop ");
   Serial.println(timeClient.getFormattedTime());
   // if(timeClient.isTimeSet()){
   int hour = timeClient.getHours();
@@ -344,19 +363,19 @@ void SchedLoop(long now) {
   //int seconds = timeClient.getSeconds();
   int sched_new[SCHED_NUM];
   if (hour > 17 || hour < 5)
-    sched_new[0] = true;
+  sched_new[0] = true;
   else
     sched_new[0] = false;
-  if (hour > 6 || hour < 18)
-    sched_new[1] = false;
-  else
-    sched_new[1] = true;
-  sched_new[2] = sched_output[2];
+    if (hour > 6 || hour < 18)
+      sched_new[1] = false;
+      else
+        sched_new[1] = true;
+        sched_new[2] = sched_output[2];
 
-  for (unsigned x = 0; x < SCHED_NUM; x++) {
-    if (sched_new[x] != sched_output[x]) {
+        for (unsigned x = 0; x < SCHED_NUM; x++) {
+  if (sched_new[x] != sched_output[x]) {
       sched_output[x] = sched_new[x];
-      power_control(x+1, sched_output[x]);
+      power_control(x + 1, sched_output[x]);
     }
   }
   // }
@@ -393,9 +412,9 @@ void loop() {
   timeClient.update();
   /*
     if (timeClient.isTimeSet())
-    Serial.print("NTP SET");
+    log+="NTP SET");
     else
-    Serial.print("NTP ???");
+    log+="NTP ???");
 
     if (hour == timeClient.getHours() && minute == timeClient.getMinutes()) {
       digitalWrite(led, 0);
