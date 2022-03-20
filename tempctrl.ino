@@ -4,7 +4,7 @@
 #include <FS.h>
 #include <WebSocketsServer.h>
 #include <ESP8266WebServer.h>
-#include <Arduino_JSON.h>
+#include <ArduinoJson.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
@@ -55,17 +55,20 @@ bool relay = false;
 bool output = false;
 int sched_output[SCHED_NUM] = { -1, -1, -1};
 
+void TempLoop(long now);
+void SchedLoop(long now);
+
 AutoPIDRelay autopid(&current_temperature, &target_temperature, &relay, PWM_PERIOD, KP, KI, KD);
 
 void Log(String &m) {
   Serial.println(m);
   if (!connected)
     return;
-  String message = "{ \"log\" :\"";
-  message += m;
+  DynamicJsonDocument log(1024);
+  log["log"] = m;
+  serializeJson(log, m);
+  webSocket.sendTXT(web_sock_number, m);
   m.clear();
-  message += "\"}";
-  webSocket.sendTXT(web_sock_number, message);
 }
 
 void setupWiFi() {
@@ -98,7 +101,6 @@ void SetupDS18B20() {
   Log(log);
 
   numberOfDevices = DS18B20.getDeviceCount();
-  String log;
   log += "Device count: ";
   log += numberOfDevices;
   Log(log);
@@ -113,7 +115,8 @@ void SetupDS18B20() {
       log += "Found device ";
       log += i;
       log += "DEC";
-      log += " with address: " + GetAddressToString(devAddr[i]);
+      log += " with address: ";
+      log += DS18B20.GetAddressToString(devAddr[i]);
     } else {
       log += "Found ghost device at ";
       log += i;
@@ -122,7 +125,7 @@ void SetupDS18B20() {
         " but could not detect address. Check power and cabling";
     }
     log += " Resolution: ";
-    log += DS18B20.getResolution(devAddr[i]));
+    log += DS18B20.getResolution(devAddr[i]);
     Log(log);
   }
 }
@@ -321,59 +324,65 @@ void send_update() {
   webSocket.sendTXT(web_sock_number, message);
 }
 
-void parse_message(String m) {
-  String log = "parse_message";
-  log += m;
-  Log(log);
-  JSONVar message = JSON.parse(m);
-  if (JSON.typeof(message) != "object") {
-    Serial.println("Erro: " + m);
+void parse_message(uint8_t *payload,
+                   size_t lenght) {
+  DynamicJsonDocument json(1024);
+  DeserializationError error = deserializeJson(json, payload, length);
+
+  if (error) {
+    String log = "deserializeJson() failed: ";
+    log += error.f_str();
+    Log(log);
     return;
   }
-  if (message.hasOwnProperty("targetTemperature")) {
-    JSONVar targetTemperature = message["targetTemperature"];
-    if (!(JSON.typeof(targetTemperature) == "number")) {
-      Serial.println("Error, targetTemperature is not an number");
-      return;
-    }
-    target_temperature = (double)targetTemperature;
+  JsonObject obj = json.to<JsonObject>(json);
+  if (obj.isNull()) {
+    Log("Error, JSON object expected.");
+    return;
+  }
+  JsonVariant targetTemperature = obj.getMember("targetTemperature")
+  if (targetTemperature.is<double>()) {
+    target_temperature = targetTemperature.as<double>();
     pid_enabled = true;
-    Serial.println(String("targetTemperature=> pid_enabled=") + pid_enabled + ", output=" + output);
+    log = String("targetTemperature=> pid_enabled=") + pid_enabled + ", output=" + output;
+    Log(log);
     return;
   }
-  if (message.hasOwnProperty("power")) {
-    JSONVar power = message["power"];
-    if (!(JSON.typeof(power) == "boolean")) {
-      Serial.println("Error, power is not an boolean");
-      return;
-    }
-    pid_enabled = false;
-    output = (bool) power;
-    Serial.println(String("POWER=> pid_enabled=") + pid_enabled + ", output=" + output);
+  JsonVariant power = obj.getMember("power");
+  if (power.is<bool>()) {
+    log = "Error, power is not an boolean";
+    Log(log);
     return;
   }
+  pid_enabled = false;
+  output = (bool) power;
+  log = String("POWER=> pid_enabled=") + pid_enabled + ", output=" + output;
+  Log(log);
+  return;
+}
 }
 
 void SchedLoop(long now) {
-  log += "SchedLoop ");
-  Serial.println(timeClient.getFormattedTime());
+  String log = "SchedLoop ";
+  log += timeClient.getFormattedTime();
+  Log(log);
   // if(timeClient.isTimeSet()){
   int hour = timeClient.getHours();
   int minutes = timeClient.getMinutes();
   //int seconds = timeClient.getSeconds();
   int sched_new[SCHED_NUM];
   if (hour > 17 || hour < 5)
-  sched_new[0] = true;
+    sched_new[0] = true;
   else
     sched_new[0] = false;
-    if (hour > 6 || hour < 18)
-      sched_new[1] = false;
-      else
-        sched_new[1] = true;
-        sched_new[2] = sched_output[2];
+  if (hour > 6 || hour < 18)
+    sched_new[1] = false;
+  else
+    sched_new[1] = true;
+  sched_new[2] = sched_output[2];
 
-        for (unsigned x = 0; x < SCHED_NUM; x++) {
-  if (sched_new[x] != sched_output[x]) {
+  for (unsigned x = 0; x < SCHED_NUM; x++) {
+    if (sched_new[x] != sched_output[x]) {
       sched_output[x] = sched_new[x];
       power_control(x + 1, sched_output[x]);
     }
