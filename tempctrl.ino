@@ -57,6 +57,8 @@ int sched_output[SCHED_NUM] = { -1, -1, -1};
 
 void TempLoop(long now);
 void SchedLoop(long now);
+String GetAddressToString(DeviceAddress deviceAddress);
+bool handleFileRead(String path);
 
 AutoPIDRelay autopid(&current_temperature, &target_temperature, &relay, PWM_PERIOD, KP, KI, KD);
 
@@ -66,9 +68,14 @@ void Log(String &m) {
     return;
   DynamicJsonDocument log(1024);
   log["log"] = m;
+  m.clear();
   serializeJson(log, m);
   webSocket.sendTXT(web_sock_number, m);
   m.clear();
+}
+void Log(char const*m) {
+  String log;
+  Log(log);
 }
 
 void setupWiFi() {
@@ -116,7 +123,7 @@ void SetupDS18B20() {
       log += i;
       log += "DEC";
       log += " with address: ";
-      log += DS18B20.GetAddressToString(devAddr[i]);
+      log += GetAddressToString(devAddr[i]);
     } else {
       log += "Found ghost device at ";
       log += i;
@@ -198,7 +205,7 @@ void setup() {
 }
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload,
-                    size_t lenght) {
+                    size_t length) {
   switch (type) {
     case WStype_DISCONNECTED:
       Serial.printf("[%u] Disconnected!\n", num);
@@ -220,7 +227,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload,
       {
         Serial.printf("[%u] get Text: %s\n", num, payload);
         String message((char*)payload);
-        parse_message(message);
+        parse_message(payload, length);
         yield();
       }
       break;
@@ -325,22 +332,23 @@ void send_update() {
 }
 
 void parse_message(uint8_t *payload,
-                   size_t lenght) {
+                   size_t length) {
   DynamicJsonDocument json(1024);
+  String log;
   DeserializationError error = deserializeJson(json, payload, length);
 
   if (error) {
-    String log = "deserializeJson() failed: ";
+    log = "deserializeJson() failed: ";
     log += error.f_str();
     Log(log);
     return;
   }
-  JsonObject obj = json.to<JsonObject>(json);
+  JsonObject obj = json.to<JsonObject>();
   if (obj.isNull()) {
     Log("Error, JSON object expected.");
     return;
   }
-  JsonVariant targetTemperature = obj.getMember("targetTemperature")
+  JsonVariant targetTemperature = obj.getMember("targetTemperature");
   if (targetTemperature.is<double>()) {
     target_temperature = targetTemperature.as<double>();
     pid_enabled = true;
@@ -359,7 +367,6 @@ void parse_message(uint8_t *payload,
   log = String("POWER=> pid_enabled=") + pid_enabled + ", output=" + output;
   Log(log);
   return;
-}
 }
 
 void SchedLoop(long now) {
