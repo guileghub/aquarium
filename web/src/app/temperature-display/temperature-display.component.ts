@@ -12,6 +12,6 @@ export class TemperatureDisplayComponent implements OnInit {
 	constructor() {
 	}
 	ngOnInit() {
-		this.temperatures$.subscribe(x=>{console.warn((x))});
+		//this.temperatures$.subscribe(x=>{console.warn((x))});
 	}
 }

@@ -10,14 +10,14 @@ import { pluck } from 'rxjs/operators';
 })
 export class AppComponent implements OnInit, OnDestroy {
 	baseUrl: string;
-	title = 'web';
+	title = 'Aquarium';
 	temperatures$: Observable<number>;
 	constructor(@Inject(Controller.ControllerService) public controller: Controller.ControllerService) {
 		this.temperatures$ = this.controller.status$.pipe(pluck('currentTemperature'));
 	}
 	ngOnInit() {
 		this.baseUrl = window.location.origin.replace("http:", "ws:") + ":81";
-		//this.baseUrl = 'ws://192.168.4.1:81';
+		this.baseUrl = "ws://10.0.0.222:81";
 		this.Connect();
 	}
 	ngOnDestroy() {

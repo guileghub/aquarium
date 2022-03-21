@@ -29,12 +29,14 @@ import { AppComponent } from './app.component';
 import { TemperatureDisplayComponent } from './temperature-display/temperature-display.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { ControllerComponent } from './controller/controller.component';
+import { LogComponent } from './log/log.component';
 
 @NgModule({
 	declarations: [
 		AppComponent,
 		TemperatureDisplayComponent,
-		ControllerComponent
+		ControllerComponent,
+        LogComponent
 	],
 	imports: [
 		...angularmods,

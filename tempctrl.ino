@@ -8,8 +8,6 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
-// https://github.com/arduino-libraries/Arduino_JSON/blob/master/examples/JSONObject/JSONObject.ino
-
 #define SCHED_NUM 3
 const char* ssid = "Canopus";
 const char* password = "B@r@lh@d@";
@@ -64,8 +62,10 @@ AutoPIDRelay autopid(&current_temperature, &target_temperature, &relay, PWM_PERI
 
 void Log(String &m) {
   Serial.println(m);
-  if (!connected)
+  if (!connected) {
+    m.clear();
     return;
+  }
   DynamicJsonDocument log(1024);
   log["log"] = m;
   m.clear();
@@ -74,7 +74,7 @@ void Log(String &m) {
   m.clear();
 }
 void Log(char const*m) {
-  String log;
+  String log = m;
   Log(log);
 }
 
@@ -225,8 +225,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload,
 
     case WStype_TEXT:
       {
-        Serial.printf("[%u] get Text: %s\n", num, payload);
-        String message((char*)payload);
+        Serial.printf("[%u] get Text: %s [%d]\n", num, payload, length);
+        //String message((char*)payload);
         parse_message(payload, length);
         yield();
       }
@@ -333,9 +333,15 @@ void send_update() {
 
 void parse_message(uint8_t *payload,
                    size_t length) {
-  DynamicJsonDocument json(1024);
+
+  String message((char*)payload);
+  StaticJsonDocument<1024> json;
   String log;
-  DeserializationError error = deserializeJson(json, payload, length);
+  DeserializationError error = deserializeJson(json, message);
+  Log(message);
+  log+="deserialized: ";
+  serializeJson(json, log);
+  Log(log);
 
   if (error) {
     log = "deserializeJson() failed: ";
@@ -343,12 +349,14 @@ void parse_message(uint8_t *payload,
     Log(log);
     return;
   }
-  JsonObject obj = json.to<JsonObject>();
+  JsonObject obj = json.as<JsonObject>();
   if (obj.isNull()) {
     Log("Error, JSON object expected.");
     return;
   }
   JsonVariant targetTemperature = obj.getMember("targetTemperature");
+  if(targetTemperature.isNull())
+    Log("targetTemperature.isNull");
   if (targetTemperature.is<double>()) {
     target_temperature = targetTemperature.as<double>();
     pid_enabled = true;
@@ -357,16 +365,19 @@ void parse_message(uint8_t *payload,
     return;
   }
   JsonVariant power = obj.getMember("power");
+  if(power.isNull())
+    Log("power.isNull()");
   if (power.is<bool>()) {
-    log = "Error, power is not an boolean";
+    pid_enabled = false;
+    output = (bool) power;
+    log = String("POWER=> pid_enabled=") + pid_enabled + ", output=" + output;
     Log(log);
     return;
   }
-  pid_enabled = false;
-  output = (bool) power;
-  log = String("POWER=> pid_enabled=") + pid_enabled + ", output=" + output;
+  Log("unknown command");
+  serializeJson(json, log);
   Log(log);
-  return;
+
 }
 
 void SchedLoop(long now) {

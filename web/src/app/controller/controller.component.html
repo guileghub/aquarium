@@ -1,5 +1,4 @@
 <mat-form-field>
-	<!-- <mat-checkbox [(ngModel)]="habilitado">{{habilitado?'Ligado':'Desligado'}}</mat-checkbox> -->
 	<mat-radio-group [(ngModel)]="modo" (change)="Change($event)">
   		<mat-radio-button value="0">Desligado</mat-radio-button><br>
   		<mat-radio-button value="1">Ligado</mat-radio-button><br>
@@ -12,5 +11,8 @@
 	</div>
 </mat-form-field>
 <span *ngIf="power===true">⚡</span>
-<!-- {{modo|json}} -->
-<!-- {{status$|async|json}} -->
+<div>
+{{modo|json}}
+<br/>
+{{status$|async|json}}
+</div>

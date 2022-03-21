@@ -17,6 +17,8 @@ export class ControllerService {
 	subject: WebSocketSubject<any>;
 	status = new Subject<Status>();
 	status$ = this.status.asObservable();
+	log = new Subject<string>();
+	log$ = this.log.asObservable();
 	constructor() { }
 	connect(url: string) {
 		this.subject = webSocket({
@@ -41,13 +43,16 @@ export class ControllerService {
 			() => console.log('complete')
 		);
 	}
-	Parse(message: Status) {
+	Parse(message: any) {
 		//console.warn(message);
 		if (typeof (message) == 'object') {
-			this.status.next(message);
+            if(message.log)
+                this.log.next(message.log);
+            else
+	            this.status.next(message);
 			return;
 		}
-		console.error(message);
+		console.error({m:message});
 	}
 	SendMode(value: Status) {
 		this.subject.next(value);
