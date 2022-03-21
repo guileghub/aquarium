@@ -333,16 +333,9 @@ void send_update() {
 
 void parse_message(uint8_t *payload,
                    size_t length) {
-
-  String message((char*)payload);
-  StaticJsonDocument<1024> json;
   String log;
-  DeserializationError error = deserializeJson(json, message);
-  Log(message);
-  log+="deserialized: ";
-  serializeJson(json, log);
-  Log(log);
-
+  StaticJsonDocument<1024> json;
+  DeserializationError error = deserializeJson(json, payload, length);
   if (error) {
     log = "deserializeJson() failed: ";
     log += error.f_str();
@@ -355,8 +348,6 @@ void parse_message(uint8_t *payload,
     return;
   }
   JsonVariant targetTemperature = obj.getMember("targetTemperature");
-  if(targetTemperature.isNull())
-    Log("targetTemperature.isNull");
   if (targetTemperature.is<double>()) {
     target_temperature = targetTemperature.as<double>();
     pid_enabled = true;
@@ -365,8 +356,6 @@ void parse_message(uint8_t *payload,
     return;
   }
   JsonVariant power = obj.getMember("power");
-  if(power.isNull())
-    Log("power.isNull()");
   if (power.is<bool>()) {
     pid_enabled = false;
     output = (bool) power;
@@ -375,9 +364,6 @@ void parse_message(uint8_t *payload,
     return;
   }
   Log("unknown command");
-  serializeJson(json, log);
-  Log(log);
-
 }
 
 void SchedLoop(long now) {

@@ -11,8 +11,9 @@
 	</div>
 </mat-form-field>
 <span *ngIf="power===true">⚡</span>
-<div>
+<div style="border: solid red 1px">
 {{modo|json}}
-<br/>
+</div>
+<div style="border: solid red 1px">
 {{status$|async|json}}
 </div>
