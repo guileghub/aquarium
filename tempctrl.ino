@@ -1,14 +1,25 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <AutoPID.h>
+
 #include <FS.h>
+
 #include <WebSocketsServer.h>
 #include <ESP8266WebServer.h>
+
 #include <ArduinoJson.h>
+
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
+//OTA upgrade
+#include <ESP8266WiFi.h>
+#include <ESP8266mDNS.h>
+//#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
+
 #define SCHED_NUM 3
+
 const char* ssid = "Canopus";
 const char* password = "B@r@lh@d@";
 const char* hostname = "aquario";
@@ -17,12 +28,15 @@ IPAddress gateway = INADDR_NONE; //(192, 168, 15, 1);
 IPAddress subnet = INADDR_NONE; //(255, 0, 0, 0);
 IPAddress primaryDNS = INADDR_NONE; //(192, 168, 15, 1);   //optional
 IPAddress secondaryDNS = INADDR_NONE; //(8, 8, 4, 4); //optional
+
 uint8_t web_sock_number = 0;
 bool connected = false;
 ESP8266WebServer server(80);
 WebSocketsServer webSocket(81);
+
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "br.pool.ntp.org", -3 * 3600, 60000);
+
 // Interno: 2840e363121901e2
 // Externo: 289a9a7512190146
 #define ONE_WIRE_BUS D2
@@ -40,8 +54,6 @@ struct Temp {
 Temp *temps = 0;
 long lastTemp, lastSched; //The last measurement
 const int temp_cycle = 1000;
-const int sched_cycle = 60 * 1000;
-
 #define PWM_PERIOD 1000
 #define KP .12
 #define KI .0003
@@ -51,6 +63,8 @@ double current_temperature = 0, target_temperature = 0;
 bool pid_enabled = false;
 bool relay = false;
 bool output = false;
+
+const int sched_cycle = 60 * 1000;
 int sched_output[SCHED_NUM] = { -1, -1, -1};
 
 void TempLoop(long now);
@@ -86,9 +100,15 @@ void setupWiFi() {
   Serial.println("");
   Serial.println("WiFi connecting.");
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
+  /*
+    while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
+    } */
+  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("Connection Failed! Rebooting...");
+    delay(5000);
+    ESP.restart();
   }
   Serial.print("Ready! Use 'http://");
   Serial.print(WiFi.localIP());
@@ -166,6 +186,55 @@ void power_control(int port, bool val) {
   Serial1.print(cmd);
 }
 
+void setupOTA() {
+
+  // Port defaults to 8266
+  // ArduinoOTA.setPort(8266);
+
+  // Hostname defaults to esp8266-[ChipID]
+  // ArduinoOTA.setHostname("myesp8266");
+
+  // No authentication by default
+  // ArduinoOTA.setPassword("admin");
+
+  // Password can be set with it's md5 value as well
+  // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
+  // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
+
+  ArduinoOTA.onStart([]() {
+    String type;
+    if (ArduinoOTA.getCommand() == U_FLASH) {
+      type = "sketch";
+    } else { // U_FS
+      type = "filesystem";
+    }
+
+    // NOTE: if updating FS this would be the place to unmount FS using FS.end()
+    Serial.println("Start updating " + type);
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) {
+      Serial.println("Auth Failed");
+    } else if (error == OTA_BEGIN_ERROR) {
+      Serial.println("Begin Failed");
+    } else if (error == OTA_CONNECT_ERROR) {
+      Serial.println("Connect Failed");
+    } else if (error == OTA_RECEIVE_ERROR) {
+      Serial.println("Receive Failed");
+    } else if (error == OTA_END_ERROR) {
+      Serial.println("End Failed");
+    }
+  });
+  ArduinoOTA.begin();
+}
+
 void setup() {
   Serial.begin(115200);
   Serial1.begin(9600);
@@ -175,6 +244,7 @@ void setup() {
   Serial.println();
   Serial.print("Configuring access point...");
   setupWiFi();
+  setupOTA();
   timeClient.begin();
 
   server.on("/", HTTP_GET, []() {
@@ -410,6 +480,7 @@ void TempLoop(long now) {
 }
 
 void loop() {
+  ArduinoOTA.handle();
   unsigned long now = millis();
   if (now - lastTemp > temp_cycle)
     TempLoop(now);
