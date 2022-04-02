@@ -26,6 +26,7 @@
 #endif
 
 #define SCHED_NUM 3
+// 1 week @5min
 #define SCHED_LEN (7*24*60/5)
 
 const char* ssid = "Canopus";
@@ -57,11 +58,11 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature DS18B20(&oneWire);
 
 struct TempMeasure {
+  // 0 -> -5, 1->-4.75 2-> -4.5 254->58.5 255->invalid
   unsigned char value;
   TempMeasure(): value(0xFF) {
   }
   TempMeasure &operator=(float temp) {
-    // 0 -> -5, 1->-4.75 2-> -4.5 254->58.5 255->invalido
     if (temp > -5 && temp <= 58.5) {
       temp += 5;
       temp *= 4;
@@ -73,20 +74,77 @@ struct TempMeasure {
   }
   operator float() const {
     if (value == 0xFF)
-      return -0;
+      return NAN;
     float res = value;
     res /= 4;
     res -= 5;
     return res;
+  }
+  operator bool() const {
+    return value != 0xFF;
+  }
+};
+struct TempHistory {
+  std::vector<TempMeasure> hist;
+  size_t time_interval;
+  size_t capacity;
+  size_t current;
+  long lastRecordEpochTime;
+  void clear() {
+    current = 0, lastRecordEpochTime = 0;
+    hist.clear();
+  }
+  TempHistory(size_t time_interval, size_t capacity): capacity(capacity) {
+    clear();
+  }
+  void addRecord(TempMeasure const& t) {
+    if (hist.size() <= capacity) {
+      hist.push_back(t);
+      current = hist.size();
+    } else {
+      if (current >= capacity)
+        current = 0;
+      hist[current] = t;
+      current++;
+    }
+  }
+  void updateRecord(TempMeasure const& t) {
+    if (hist.empty())
+      addRecord(TempMeasure());
+
+  }
+  size_t epoch2delta(unsigned long epochTime) {
+    if (epochTime < lastRecordEpochTime)
+      return capacity;
+    return (epochTime - lastRecordEpochTime) / time_interval;
+  }
+  void record(TempMeasure const& t, unsigned long epochTime) {
+    if (epochTime < lastRecordEpochTime)
+      clear();
+    if (!lastRecordEpochTime)
+      lastRecordEpochTime = epochTime;
+    long gap = epoch2delta(epochTime);
+    if (gap >= capacity) {
+      clear();
+      gap = 0;
+    }
+    lastRecordEpochTime = epochTime;
+    while (gap--)
+      addRecord(TempMeasure());
+    updateRecord(t);
+  }
+  TempMeasure query(unsigned long epochTime) {
+    TempMeasure result;
+    if (epochTime > lastRecordEpochTime || epochTime)
+      return result;
   }
 };
 
 struct TempDevice {
   DeviceAddress dev_addr;
   String name;
-  std::vector<TempMeasure> week_record;
+  TempHistory history;
   TempDevice() {
-    week_record.resize(SCHED_LEN);
   }
 };
 std::vector<TempDevice> temp_devs;
@@ -442,7 +500,8 @@ static void fill_temps(JsonDocument &response) {
     td[i] = temps.createNestedArray(temp_devs[i].name);
   for (int x = 0; x < SCHED_LEN; x++) {
     for (int i = 0; i < devs_num; i++) {
-      td[i].add(static_cast<float>(temp_devs[i].week_record[x]));
+      if (temp_devs[i].week_record[x])
+        td[i].add(static_cast<float>(temp_devs[i].week_record[x]));
       if (response.memoryUsage() + 64 > response.capacity())
         return;
     }
