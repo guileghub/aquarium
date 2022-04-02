@@ -1,24 +1,32 @@
+//#define AUTOPID
+#define TEMP_RECORD
+#define OTA_UPDATE
+#define POWER_CTRL
+
+#ifdef TEMP_RECORD
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <AutoPID.h>
+#include <vector>
+#endif
 
 #include <FS.h>
-
 #include <WebSocketsServer.h>
 #include <ESP8266WebServer.h>
-
 #include <ArduinoJson.h>
 
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
-//OTA upgrade
+#ifdef OTA_UPDATE
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
-//#include <WiFiUdp.h>
+#include <WiFiUdp.h>
 #include <ArduinoOTA.h>
+#endif
 
 #define SCHED_NUM 3
+#define SCHED_LEN (7*24*60/5)
 
 const char* ssid = "Canopus";
 const char* password = "B@r@lh@d@";
@@ -28,6 +36,10 @@ IPAddress gateway = INADDR_NONE; //(192, 168, 15, 1);
 IPAddress subnet = INADDR_NONE; //(255, 0, 0, 0);
 IPAddress primaryDNS = INADDR_NONE; //(192, 168, 15, 1);   //optional
 IPAddress secondaryDNS = INADDR_NONE; //(8, 8, 4, 4); //optional
+
+#ifdef TEMP_RECORD
+unsigned last_temp_record = 0;
+#endif
 
 uint8_t web_sock_number = 0;
 bool connected = false;
@@ -43,26 +55,58 @@ NTPClient timeClient(ntpUDP, "br.pool.ntp.org", -3 * 3600, 60000);
 #define OUTPUT_PIN D5
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature DS18B20(&oneWire);
-int numberOfDevices;
-DeviceAddress *devAddr = 0;
-unsigned maxTemps = 7200;
-unsigned numTemps = 0;
-struct Temp {
-  unsigned char duracao;
-  unsigned char* medidas;
+
+struct TempMeasure {
+  unsigned char value;
+  TempMeasure(): value(0xFF) {
+  }
+  TempMeasure &operator=(float temp) {
+    // 0 -> -5, 1->-4.75 2-> -4.5 254->58.5 255->invalido
+    if (temp > -5 && temp <= 58.5) {
+      temp += 5;
+      temp *= 4;
+      if (temp < 0) temp = 0;
+      if (temp > 254) temp = 254;
+      value = static_cast<unsigned char>(temp);
+    } else value = 0xFF;
+    return *this;
+  }
+  operator float() const {
+    if (value == 0xFF)
+      return -0;
+    float res = value;
+    res /= 4;
+    res -= 5;
+    return res;
+  }
 };
-Temp *temps = 0;
+
+struct TempDevice {
+  DeviceAddress dev_addr;
+  String name;
+  std::vector<TempMeasure> week_record;
+  TempDevice() {
+    week_record.resize(SCHED_LEN);
+  }
+};
+std::vector<TempDevice> temp_devs;
+
+unsigned constexpr maxTemps = (60 / 5) * 24 * 7; // 24x7 @ 5min
 long lastTemp, lastSched; //The last measurement
-const int temp_cycle = 1000;
+const int temp_cycle = 1000 * 60 * 1; // @1 min
+unsigned char *temps = nullptr;
+
+#ifdef AUTOPID
+double current_temperature = 0;
 #define PWM_PERIOD 1000
 #define KP .12
 #define KI .0003
 #define KD 0
-
-double current_temperature = 0, target_temperature = 0;
+double target_temperature = 0;
 bool pid_enabled = false;
 bool relay = false;
 bool output = false;
+#endif
 
 const int sched_cycle = 60 * 1000;
 int sched_output[SCHED_NUM] = { -1, -1, -1};
@@ -72,7 +116,9 @@ void SchedLoop(long now);
 String GetAddressToString(DeviceAddress deviceAddress);
 bool handleFileRead(String path);
 
+#ifdef AUTOPID
 AutoPIDRelay autopid(&current_temperature, &target_temperature, &relay, PWM_PERIOD, KP, KI, KD);
+#endif
 
 void Log(String &m) {
   Serial.println(m);
@@ -115,6 +161,7 @@ void setupWiFi() {
   Serial.println("' to connect");
 }
 
+#ifdef TEMP_RECORD
 //Setting the temperature sensor
 void SetupDS18B20() {
   DS18B20.begin();
@@ -127,24 +174,28 @@ void SetupDS18B20() {
   }
   Log(log);
 
-  numberOfDevices = DS18B20.getDeviceCount();
+  int numberOfDevices = DS18B20.getDeviceCount();
   log += "Device count: ";
   log += numberOfDevices;
   Log(log);
-  if (numberOfDevices > 0)
-    devAddr = new DeviceAddress[numberOfDevices];
+  if (numberOfDevices > 0) {
+    temp_devs.clear();
+    temp_devs.resize(numberOfDevices);
+  }
 
   DS18B20.requestTemperatures();
 
   for (int i = 0; i < numberOfDevices; i++) {
     // Search the wire for address
-    if (DS18B20.getAddress(devAddr[i], i)) {
+    if (DS18B20.getAddress(temp_devs[i].dev_addr, i)) {
+      temp_devs[i].name = GetAddressToString(temp_devs[i].dev_addr);
       log += "Found device ";
       log += i;
       log += "DEC";
       log += " with address: ";
-      log += GetAddressToString(devAddr[i]);
+      log += GetAddressToString(temp_devs[i].dev_addr);
     } else {
+      temp_devs[i].name = "unknown";
       log += "Found ghost device at ";
       log += i;
       log += "DEC";
@@ -152,16 +203,17 @@ void SetupDS18B20() {
         " but could not detect address. Check power and cabling";
     }
     log += " Resolution: ";
-    log += DS18B20.getResolution(devAddr[i]);
+    log += DS18B20.getResolution(temp_devs[i].dev_addr);
     Log(log);
   }
 }
-
-void SetupPID() {
+#endif
+/*
+  void SetupPID() {
   autopid.setBangBang(4);
   autopid.setTimeStep(temp_cycle);
-}
-
+  }
+*/
 void power_control(int port, bool val) {
   char port_code;
   switch (port) {
@@ -269,8 +321,9 @@ void setup() {
 
   TempLoop(now);
   SchedLoop(now);
-
+#ifdef AUTOPID
   SetupPID();
+#endif
   yield();
 }
 
@@ -290,6 +343,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload,
         yield();
         web_sock_number = num;
         connected = true;
+        send_update();
         break;
       }
 
@@ -379,31 +433,46 @@ String GetAddressToString(DeviceAddress deviceAddress) {
   return str;
 }
 
+static void fill_temps(JsonDocument &response) {
+  //week temp records
+  JsonObject temps = response.createNestedObject("temperatures");
+  size_t devs_num = temp_devs.size();
+  JsonArray td[devs_num];
+  for (int i = 0; i < devs_num; i++)
+    td[i] = temps.createNestedArray(temp_devs[i].name);
+  for (int x = 0; x < SCHED_LEN; x++) {
+    for (int i = 0; i < devs_num; i++) {
+      td[i].add(static_cast<float>(temp_devs[i].week_record[x]));
+      if (response.memoryUsage() + 64 > response.capacity())
+        return;
+    }
+  }
+}
+
 void send_update() {
   if (!connected)
     return;
-  String message = "{ \"currentTemperature\" :";
-  message += current_temperature;
+  DynamicJsonDocument status(4096);
+#ifdef AUTOPID
   if (pid_enabled) {
-    message += ", \"targetTemperature\" :";
-    message += target_temperature;
+    status["targetTemperature"] = target_temperature;
   }
-  message += ", \"power\" :";
-  message += output ? "true" : "false";
-  message += ", \"outputs\" : [";
+  status["power"] = !!output;
+#endif
+  JsonArray outputs = status.createNestedArray("outputs");
   for (unsigned x = 0; x < SCHED_NUM; x++) {
-    if (x)
-      message += ',';
-    message += sched_output[x];
+    outputs.add(sched_output[x]);
   }
-  message += ']';
-  message += "}";
+  fill_temps(status);
+  String message;
+  serializeJson(status, message);
   webSocket.sendTXT(web_sock_number, message);
 }
 
 void parse_message(uint8_t *payload,
                    size_t length) {
   String log;
+  int numberOfDevices = temp_devs.size();
   StaticJsonDocument<1024> json;
   DeserializationError error = deserializeJson(json, payload, length);
   if (error) {
@@ -417,6 +486,7 @@ void parse_message(uint8_t *payload,
     Log("Error, JSON object expected.");
     return;
   }
+#ifdef AUTOPID
   JsonVariant targetTemperature = obj.getMember("targetTemperature");
   if (targetTemperature.is<double>()) {
     target_temperature = targetTemperature.as<double>();
@@ -431,6 +501,19 @@ void parse_message(uint8_t *payload,
     output = (bool) power;
     log = String("POWER=> pid_enabled=") + pid_enabled + ", output=" + output;
     Log(log);
+    return;
+  }
+#endif
+  JsonVariant outputs = obj.getMember("outputs");
+  if (outputs.is<JsonArray>()) {
+    for (int i = 0; i < numberOfDevices; i++) {
+      JsonVariant output = outputs.getElement(i);
+      if (!output.isNull()) {
+        bool v = output.as<bool>();
+        sched_output[i] = v;
+        power_control(i + 1, sched_output[i]);
+      }
+    }
     return;
   }
   Log("unknown command");
@@ -466,16 +549,22 @@ void SchedLoop(long now) {
 }
 //Loop measuring the temperature
 void TempLoop(long now) {
-  for (int i = 0; i < numberOfDevices; i++) {
-    float tempC = DS18B20.getTempC(devAddr[i]); //Measuring temperature in Celsius
-    //tempDev[i] = tempC; //Save the measured value to the array
-    if (i == 0) {
-      current_temperature = tempC;
-      send_update();
+  int dayWeek = timeClient.getDay(); // 0 => sunday
+  int hour = timeClient.getHours();
+  int minutes = timeClient.getMinutes();
+  unsigned delta = ((dayWeek * 24 + hour) * 60 + minutes) / 5;
+  delta %= maxTemps;
+  if (delta != last_temp_record) {
+    last_temp_record = delta;
+    int numberOfDevices = temp_devs.size();
+    for (int i = 0; i < numberOfDevices; i++) {
+      float tempC = DS18B20.getTempC(temp_devs[i].dev_addr); //Measuring temperature in Celsius
+      temp_devs[i].week_record[delta] = tempC;
     }
+    DS18B20.setWaitForConversion(false); //No waiting for measurement
+    DS18B20.requestTemperatures(); //Initiate the temperature measurement
   }
-  DS18B20.setWaitForConversion(false); //No waiting for measurement
-  DS18B20.requestTemperatures(); //Initiate the temperature measurement
+  send_update();
   lastTemp = now;  //Remember the last time measurement
 }
 
@@ -486,11 +575,15 @@ void loop() {
     TempLoop(now);
   if (now - lastSched > sched_cycle)
     SchedLoop(now);
+
+#ifdef AUTOPID
   if (pid_enabled) {
     autopid.run();
     output = relay;
   }
   digitalWrite(OUTPUT_PIN, output);
+#endif
+
   server.handleClient();
   webSocket.loop();
   timeClient.update();
