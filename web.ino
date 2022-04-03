@@ -1,12 +1,16 @@
 #ifdef WEB
+
+#include <FS.h>
+#include <WebSocketsServer.h>
+#include <ESP8266WebServer.h>
+#include <ArduinoJson.h>
+
 uint8_t web_sock_number = 0;
 bool connected = false;
 ESP8266WebServer server(80);
 WebSocketsServer webSocket(81);
 
-bool handleFileRead(String path);
-
-void setupWEB() {
+void setup_WEB() {
   SPIFFS.begin();
   server.on("/", HTTP_GET, []() {
     handleFileRead("/");

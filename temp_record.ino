@@ -5,8 +5,8 @@
 
 // Interno: 2840e363121901e2
 // Externo: 289a9a7512190146
-#define ONE_WIRE_BUS D2
-OneWire oneWire(ONE_WIRE_BUS);
+#define TEMPERATURE_ONE_WIRE_BUS_PIN D2
+OneWire oneWire(TEMPERATURE_ONE_WIRE_BUS_PIN);
 DallasTemperature DS18B20(&oneWire);
 
 long last_temp; //The last measurement
@@ -137,6 +137,11 @@ struct TempDevice {
 
 std::vector<TempDevice> temp_devs;
 
+void setup_temp_record(){
+	SetupDS18B20();
+#error  loop_temp_record(now);
+}
+
 //Setting the temperature sensor
 void SetupDS18B20() {
   DS18B20.begin();
@@ -181,6 +186,7 @@ void SetupDS18B20() {
     log += DS18B20.getResolution(temp_devs[i].dev_addr);
     Log(log);
   }
+#ifdef TEMP_RECORD
 }
 
 String GetAddressToString(DeviceAddress deviceAddress) {
