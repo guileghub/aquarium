@@ -26,8 +26,10 @@
 #endif
 
 #define SCHED_NUM 3
-// 1 week @5min
-#define SCHED_LEN (7*24*60/5)
+// 1 week
+#define TEMP_HIST_LEN (7*24*60/5)
+// @5min
+#define TEMP_HIST_PERIOD 5*60
 
 const char* ssid = "Canopus";
 const char* password = "B@r@lh@d@";
@@ -39,7 +41,6 @@ IPAddress primaryDNS = INADDR_NONE; //(192, 168, 15, 1);   //optional
 IPAddress secondaryDNS = INADDR_NONE; //(8, 8, 4, 4); //optional
 
 #ifdef TEMP_RECORD
-unsigned last_temp_record = 0;
 #endif
 
 uint8_t web_sock_number = 0;
@@ -57,101 +58,9 @@ NTPClient timeClient(ntpUDP, "br.pool.ntp.org", -3 * 3600, 60000);
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature DS18B20(&oneWire);
 
-struct TempMeasure {
-  // 0 -> -5, 1->-4.75 2-> -4.5 254->58.5 255->invalid
-  unsigned char value;
-  TempMeasure(): value(0xFF) {
-  }
-  TempMeasure &operator=(float temp) {
-    if (temp > -5 && temp <= 58.5) {
-      temp += 5;
-      temp *= 4;
-      if (temp < 0) temp = 0;
-      if (temp > 254) temp = 254;
-      value = static_cast<unsigned char>(temp);
-    } else value = 0xFF;
-    return *this;
-  }
-  operator float() const {
-    if (value == 0xFF)
-      return NAN;
-    float res = value;
-    res /= 4;
-    res -= 5;
-    return res;
-  }
-  operator bool() const {
-    return value != 0xFF;
-  }
-};
-struct TempHistory {
-  std::vector<TempMeasure> hist;
-  size_t time_interval;
-  size_t capacity;
-  size_t current;
-  long lastRecordEpochTime;
-  void clear() {
-    current = 0, lastRecordEpochTime = 0;
-    hist.clear();
-  }
-  TempHistory(size_t time_interval, size_t capacity): capacity(capacity) {
-    clear();
-  }
-  void addRecord(TempMeasure const& t) {
-    if (hist.size() <= capacity) {
-      hist.push_back(t);
-      current = hist.size();
-    } else {
-      if (current >= capacity)
-        current = 0;
-      hist[current] = t;
-      current++;
-    }
-  }
-  void updateRecord(TempMeasure const& t) {
-    if (hist.empty())
-      addRecord(TempMeasure());
 
-  }
-  size_t epoch2delta(unsigned long epochTime) {
-    if (epochTime < lastRecordEpochTime)
-      return capacity;
-    return (epochTime - lastRecordEpochTime) / time_interval;
-  }
-  void record(TempMeasure const& t, unsigned long epochTime) {
-    if (epochTime < lastRecordEpochTime)
-      clear();
-    if (!lastRecordEpochTime)
-      lastRecordEpochTime = epochTime;
-    long gap = epoch2delta(epochTime);
-    if (gap >= capacity) {
-      clear();
-      gap = 0;
-    }
-    lastRecordEpochTime = epochTime;
-    while (gap--)
-      addRecord(TempMeasure());
-    updateRecord(t);
-  }
-  TempMeasure query(unsigned long epochTime) {
-    TempMeasure result;
-    if (epochTime > lastRecordEpochTime || epochTime)
-      return result;
-  }
-};
-
-struct TempDevice {
-  DeviceAddress dev_addr;
-  String name;
-  TempHistory history;
-  TempDevice() {
-  }
-};
-std::vector<TempDevice> temp_devs;
-
-unsigned constexpr maxTemps = (60 / 5) * 24 * 7; // 24x7 @ 5min
 long lastTemp, lastSched; //The last measurement
-const int temp_cycle = 1000 * 60 * 1; // @1 min
+const int temp_cycle = 1; // @1s
 unsigned char *temps = nullptr;
 
 #ifdef AUTOPID
@@ -166,7 +75,7 @@ bool relay = false;
 bool output = false;
 #endif
 
-const int sched_cycle = 60 * 1000;
+const int sched_cycle = 60;
 int sched_output[SCHED_NUM] = { -1, -1, -1};
 
 void TempLoop(long now);
@@ -195,6 +104,133 @@ void Log(char const*m) {
   String log = m;
   Log(log);
 }
+
+
+struct TempMeasure {
+  // 0 -> -5, 1->-4.75 2-> -4.5 254->58.5 255->invalid
+  unsigned char value;
+  TempMeasure(): value(0xFF) {
+  }
+  TempMeasure(float temp) {
+    if (temp > -5 && temp <= 58.5) {
+      temp += 5;
+      temp *= 4;
+      if (temp < 0) temp = 0;
+      if (temp > 254) temp = 254;
+      value = static_cast<unsigned char>(temp);
+    } else value = 0xFF;
+  }
+  operator float() const {
+    if (value == 0xFF)
+      return NAN;
+    float res = value;
+    res /= 4;
+    res -= 5;
+    return res;
+  }
+  operator bool() const {
+    return value != 0xFF;
+  }
+};
+struct TempHistory {
+  std::vector<TempMeasure> hist;
+  size_t time_interval;
+  size_t capacity;
+  size_t current;
+  unsigned long lastRecordEpochTime;
+  void clear() {
+    current = 0, lastRecordEpochTime = 0;
+    hist.clear();
+    Log("clear");
+  }
+  TempHistory(size_t time_interval, size_t capacity): time_interval(time_interval), capacity(capacity) {
+    clear();
+  }
+  void addRecord(TempMeasure const& t) {
+    if (hist.size() <= capacity) {
+      hist.push_back(t);
+      current = hist.size();
+    } else {
+      if (current >= capacity)
+        current = 0;
+      hist[current] = t;
+      current++;
+    }
+  }
+  void updateRecord(TempMeasure const& t) {
+    if (hist.empty())
+      addRecord(t);
+    else
+      hist[current - 1] = t;
+  }
+  void record(TempMeasure const& t, unsigned long epochTime) {
+    String log;
+    log += "epochTime: ";
+    log += epochTime;
+    log += " lastRecordEpochTime:";
+    log += lastRecordEpochTime;
+    if (epochTime < lastRecordEpochTime)
+      clear();
+    if (!lastRecordEpochTime)
+      lastRecordEpochTime = epochTime;
+    unsigned long gap = (epochTime - lastRecordEpochTime) / time_interval;
+    log += " gap:";
+    log += gap;
+    Log(log);
+    if (gap >= capacity) {
+      clear();
+      gap = 0;
+    }
+    if (gap) {
+      while (gap--)
+        addRecord(TempMeasure());
+      lastRecordEpochTime = epochTime;
+    }
+    updateRecord(t);
+    log = "hist.size()=";
+    log += hist.size();
+    log += " current=";
+    log += current;
+    Log(log);
+  }
+  std::vector<TempMeasure> query(unsigned long begin, unsigned long end) {
+    std::vector<TempMeasure> result;
+    size_t size = hist.size();
+    long deltaBegin = (lastRecordEpochTime - begin) / time_interval;
+    if (deltaBegin >= size)
+      return result;
+    long deltaEnd = (lastRecordEpochTime - end) / time_interval;
+    if (deltaEnd >= size)
+      return result;
+    size_t i, e;
+    if (deltaBegin < (size - current)) {
+      i = size - current + deltaBegin;
+    } else {
+      i = deltaBegin + current - size;
+    }
+    if (deltaEnd < (size - current)) {
+      e = size - current + deltaEnd;
+    } else {
+      e = deltaEnd + current - size;
+    }
+    for (; i != e; i++) {
+      result.push_back(hist[i]);
+      if (i >= size)
+        i = 0;
+    }
+    return result;
+  }
+};
+
+struct TempDevice {
+  DeviceAddress dev_addr;
+  String name;
+  TempHistory history;
+  TempDevice() : history(TEMP_HIST_PERIOD, TEMP_HIST_LEN) {
+  }
+};
+
+std::vector<TempDevice> temp_devs;
 
 void setupWiFi() {
   /*  if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
@@ -302,7 +338,7 @@ void setupOTA() {
   // ArduinoOTA.setPort(8266);
 
   // Hostname defaults to esp8266-[ChipID]
-  // ArduinoOTA.setHostname("myesp8266");
+  ArduinoOTA.setHostname("aquario");
 
   // No authentication by default
   // ArduinoOTA.setPassword("admin");
@@ -317,6 +353,7 @@ void setupOTA() {
       type = "sketch";
     } else { // U_FS
       type = "filesystem";
+      SPIFFS.end();
     }
 
     // NOTE: if updating FS this would be the place to unmount FS using FS.end()
@@ -346,6 +383,7 @@ void setupOTA() {
 }
 
 void setup() {
+  ESP.wdtEnable(WDTO_8S);
   Serial.begin(115200);
   Serial1.begin(9600);
   delay(1000);
@@ -372,7 +410,7 @@ void setup() {
   server.begin();
   Serial.println("HTTP server started");
 
-  unsigned long now = millis();
+  unsigned long now = timeClient.getEpochTime();
   lastTemp = lastSched = now;
 
   SetupDS18B20();
@@ -491,23 +529,43 @@ String GetAddressToString(DeviceAddress deviceAddress) {
   return str;
 }
 
-static void fill_temps(JsonDocument &response) {
+static void fill_temps(JsonDocument &response, unsigned long begin, unsigned long end) {
   //week temp records
   JsonObject temps = response.createNestedObject("temperatures");
   size_t devs_num = temp_devs.size();
   JsonArray td[devs_num];
   for (int i = 0; i < devs_num; i++)
     td[i] = temps.createNestedArray(temp_devs[i].name);
-  for (int x = 0; x < SCHED_LEN; x++) {
-    for (int i = 0; i < devs_num; i++) {
-      if (temp_devs[i].week_record[x])
-        td[i].add(static_cast<float>(temp_devs[i].week_record[x]));
+  for (int i = 0; i < devs_num; i++) {
+    std::vector<TempMeasure> tv = temp_devs[i].history.query(begin, end);
+    for (auto t : tv) {
+      td[i].add(static_cast<float>(t));
       if (response.memoryUsage() + 64 > response.capacity())
         return;
     }
   }
 }
-
+void temperatureUpdate(unsigned long now) {
+  if (!connected)
+    return;
+  DynamicJsonDocument response(4096);
+  fill_temps(response, now - 60, now);
+  String message;
+  serializeJson(response, message);
+  webSocket.sendTXT(web_sock_number, message);
+}
+void schedUpdate(unsigned long now) {
+  if (!connected)
+    return;
+  DynamicJsonDocument response(4096);
+  JsonArray outputs = response.createNestedArray("outputs");
+  for (unsigned x = 0; x < SCHED_NUM; x++) {
+    outputs.add(sched_output[x]);
+  }
+  String message;
+  serializeJson(response, message);
+  webSocket.sendTXT(web_sock_number, message);
+}
 void send_update() {
   if (!connected)
     return;
@@ -518,11 +576,6 @@ void send_update() {
   }
   status["power"] = !!output;
 #endif
-  JsonArray outputs = status.createNestedArray("outputs");
-  for (unsigned x = 0; x < SCHED_NUM; x++) {
-    outputs.add(sched_output[x]);
-  }
-  fill_temps(status);
   String message;
   serializeJson(status, message);
   webSocket.sendTXT(web_sock_number, message);
@@ -544,6 +597,11 @@ void parse_message(uint8_t *payload,
   if (obj.isNull()) {
     Log("Error, JSON object expected.");
     return;
+  }
+  JsonVariant reboot = obj.getMember("reboot");
+  if (reboot.is<bool>()) {
+    if (reboot.as<bool>())
+      ESP.restart();
   }
 #ifdef AUTOPID
   JsonVariant targetTemperature = obj.getMember("targetTemperature");
@@ -578,14 +636,13 @@ void parse_message(uint8_t *payload,
   Log("unknown command");
 }
 
-void SchedLoop(long now) {
+void SchedLoop(unsigned long now) {
   String log = "SchedLoop ";
   log += timeClient.getFormattedTime();
   Log(log);
   // if(timeClient.isTimeSet()){
   int hour = timeClient.getHours();
   int minutes = timeClient.getMinutes();
-  //int seconds = timeClient.getSeconds();
   int sched_new[SCHED_NUM];
   if (hour > 17 || hour < 5)
     sched_new[0] = true;
@@ -603,33 +660,36 @@ void SchedLoop(long now) {
       power_control(x + 1, sched_output[x]);
     }
   }
-  // }
   lastSched = now;
+  schedUpdate(now);
 }
 //Loop measuring the temperature
-void TempLoop(long now) {
-  int dayWeek = timeClient.getDay(); // 0 => sunday
-  int hour = timeClient.getHours();
-  int minutes = timeClient.getMinutes();
-  unsigned delta = ((dayWeek * 24 + hour) * 60 + minutes) / 5;
-  delta %= maxTemps;
-  if (delta != last_temp_record) {
-    last_temp_record = delta;
-    int numberOfDevices = temp_devs.size();
-    for (int i = 0; i < numberOfDevices; i++) {
-      float tempC = DS18B20.getTempC(temp_devs[i].dev_addr); //Measuring temperature in Celsius
-      temp_devs[i].week_record[delta] = tempC;
-    }
-    DS18B20.setWaitForConversion(false); //No waiting for measurement
-    DS18B20.requestTemperatures(); //Initiate the temperature measurement
+void TempLoop(unsigned long now) {
+  int numberOfDevices = temp_devs.size();
+  for (int i = 0; i < numberOfDevices; i++) {
+    float tempC = DS18B20.getTempC(temp_devs[i].dev_addr); //Measuring temperature in Celsius
+    TempMeasure t(tempC);
+    String log;
+    log += "Temperature[";
+    log += temp_devs[i].name;
+    log += "]@(";
+    log += now;
+    log += ")=";
+    log += tempC;
+    log += "C";
+    Log(log);
+    temp_devs[i].history.record(t, now);
   }
-  send_update();
+  DS18B20.setWaitForConversion(false); //No waiting for measurement
+  DS18B20.requestTemperatures(); //Initiate the temperature measurement
+  temperatureUpdate(now);
   lastTemp = now;  //Remember the last time measurement
 }
 
 void loop() {
+  ESP.wdtFeed();
   ArduinoOTA.handle();
-  unsigned long now = millis();
+  unsigned long now = timeClient.getEpochTime();
   if (now - lastTemp > temp_cycle)
     TempLoop(now);
   if (now - lastSched > sched_cycle)

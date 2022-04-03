@@ -5,7 +5,5 @@
 	<button mat-raised-button (click)="Connect()">Conectar</button>
 </div>
 <div *ngIf="controller.connected">
-<app-temperature-display  [temperatures]="temperatures$"></app-temperature-display>
-<app-controller [status]="controller.status$"></app-controller>
 <app-log [logs]="controller.log$"></app-log>
 </div>
