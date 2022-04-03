@@ -4,7 +4,7 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 
-void setupOTA() {
+void setup_ota() {
   // Port defaults to 8266
   // ArduinoOTA.setPort(8266);
 
@@ -53,18 +53,7 @@ void setupOTA() {
   ArduinoOTA.begin();
 }
 
-void setup() {
-  ESP.wdtEnable(WDTO_8S);
-  Serial.begin(115200);
-  Serial1.begin(9600);
-  delay(1000);
-  pinMode(OUTPUT_PIN, OUTPUT);
-  SPIFFS.begin();
-  Serial.println();
-  Serial.print("Configuring access point...");
-  setupWiFi();
-  
-void loop_OTA() {
+void loop_ota() {
   ArduinoOTA.handle();
 }
 #endif

@@ -1,7 +1,8 @@
-//#define AUTOPID
+//#define TEMP_PID_CTRL
 #define TEMP_RECORD
 #define OTA_UPDATE
 #define POWER_CTRL
+#define WEB
 
 #ifdef TEMP_RECORD
 #include <OneWire.h>
@@ -17,13 +18,6 @@
 
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-
-#ifdef OTA_UPDATE
-#include <ESP8266WiFi.h>
-#include <ESP8266mDNS.h>
-#include <WiFiUdp.h>
-#include <ArduinoOTA.h>
-#endif
 
 #define SCHED_NUM 3
 // 1 week
@@ -63,18 +57,6 @@ long lastTemp, lastSched; //The last measurement
 const int temp_cycle = 1; // @1s
 unsigned char *temps = nullptr;
 
-#ifdef AUTOPID
-double current_temperature = 0;
-#define PWM_PERIOD 1000
-#define KP .12
-#define KI .0003
-#define KD 0
-double target_temperature = 0;
-bool pid_enabled = false;
-bool relay = false;
-bool output = false;
-#endif
-
 const int sched_cycle = 60;
 int sched_output[SCHED_NUM] = { -1, -1, -1};
 
@@ -82,10 +64,6 @@ void TempLoop(long now);
 void SchedLoop(long now);
 String GetAddressToString(DeviceAddress deviceAddress);
 bool handleFileRead(String path);
-
-#ifdef AUTOPID
-AutoPIDRelay autopid(&current_temperature, &target_temperature, &relay, PWM_PERIOD, KP, KI, KD);
-#endif
 
 void Log(String &m) {
   Serial.println(m);
@@ -232,7 +210,7 @@ struct TempDevice {
 
 std::vector<TempDevice> temp_devs;
 
-void setupWiFi() {
+void setup_wifi() {
   /*  if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
       Serial.println("STA Failed to configure");
     }*/
@@ -332,56 +310,6 @@ void power_control(int port, bool val) {
   Serial1.print(cmd);
 }
 
-void setupOTA() {
-
-  // Port defaults to 8266
-  // ArduinoOTA.setPort(8266);
-
-  // Hostname defaults to esp8266-[ChipID]
-  ArduinoOTA.setHostname("aquario");
-
-  // No authentication by default
-  // ArduinoOTA.setPassword("admin");
-
-  // Password can be set with it's md5 value as well
-  // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
-  // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
-
-  ArduinoOTA.onStart([]() {
-    String type;
-    if (ArduinoOTA.getCommand() == U_FLASH) {
-      type = "sketch";
-    } else { // U_FS
-      type = "filesystem";
-      SPIFFS.end();
-    }
-
-    // NOTE: if updating FS this would be the place to unmount FS using FS.end()
-    Serial.println("Start updating " + type);
-  });
-  ArduinoOTA.onEnd([]() {
-    Serial.println("\nEnd");
-  });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) {
-      Serial.println("Auth Failed");
-    } else if (error == OTA_BEGIN_ERROR) {
-      Serial.println("Begin Failed");
-    } else if (error == OTA_CONNECT_ERROR) {
-      Serial.println("Connect Failed");
-    } else if (error == OTA_RECEIVE_ERROR) {
-      Serial.println("Receive Failed");
-    } else if (error == OTA_END_ERROR) {
-      Serial.println("End Failed");
-    }
-  });
-  ArduinoOTA.begin();
-}
-
 void setup() {
   ESP.wdtEnable(WDTO_8S);
   Serial.begin(115200);
@@ -391,8 +319,8 @@ void setup() {
   SPIFFS.begin();
   Serial.println();
   Serial.print("Configuring access point...");
-  setupWiFi();
-  setupOTA();
+  setup_wifi();
+  setup_ota();
   timeClient.begin();
 
   server.on("/", HTTP_GET, []() {
@@ -417,7 +345,7 @@ void setup() {
 
   TempLoop(now);
   SchedLoop(now);
-#ifdef AUTOPID
+#ifdef TEMP_PID_CTRL
   SetupPID();
 #endif
   yield();
@@ -570,12 +498,6 @@ void send_update() {
   if (!connected)
     return;
   DynamicJsonDocument status(4096);
-#ifdef AUTOPID
-  if (pid_enabled) {
-    status["targetTemperature"] = target_temperature;
-  }
-  status["power"] = !!output;
-#endif
   String message;
   serializeJson(status, message);
   webSocket.sendTXT(web_sock_number, message);
@@ -603,7 +525,7 @@ void parse_message(uint8_t *payload,
     if (reboot.as<bool>())
       ESP.restart();
   }
-#ifdef AUTOPID
+#ifdef TEMP_PID_CTRL
   JsonVariant targetTemperature = obj.getMember("targetTemperature");
   if (targetTemperature.is<double>()) {
     target_temperature = targetTemperature.as<double>();
@@ -688,35 +610,23 @@ void TempLoop(unsigned long now) {
 
 void loop() {
   ESP.wdtFeed();
-  ArduinoOTA.handle();
+
+#ifdef OTA_UPDATE
+  loop_ota();
+#endif
+
+  timeClient.update();
   unsigned long now = timeClient.getEpochTime();
   if (now - lastTemp > temp_cycle)
     TempLoop(now);
   if (now - lastSched > sched_cycle)
     SchedLoop(now);
 
-#ifdef AUTOPID
-  if (pid_enabled) {
-    autopid.run();
-    output = relay;
-  }
-  digitalWrite(OUTPUT_PIN, output);
+#ifdef TEMP_PID_CTRL
+  loop_PID_CTRL();
 #endif
 
-  server.handleClient();
-  webSocket.loop();
-  timeClient.update();
-  /*
-    if (timeClient.isTimeSet())
-    log+="NTP SET");
-    else
-    log+="NTP ???");
-
-    if (hour == timeClient.getHours() && minute == timeClient.getMinutes()) {
-      digitalWrite(led, 0);
-    }
-    }
-  */
-  //Serial.println(timeClient.getFormattedTime());
-  //delay(100);
+#ifdef WEB
+  loop_WEB();
+#endif
 }

@@ -1,60 +1,18 @@
-//#define AUTOPID
-#define TEMP_RECORD
-#define OTA_UPDATE
-#define POWER_CTRL
-
 #ifdef TEMP_RECORD
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <AutoPID.h>
 #include <vector>
-#endif
 
-#include <FS.h>
-#include <WebSocketsServer.h>
-#include <ESP8266WebServer.h>
-#include <ArduinoJson.h>
-
-#include <NTPClient.h>
-#include <WiFiUdp.h>
-
-#ifdef OTA_UPDATE
-#include <ESP8266WiFi.h>
-#include <ESP8266mDNS.h>
-#include <WiFiUdp.h>
-#include <ArduinoOTA.h>
-#endif
-
-#define SCHED_NUM 3
 // 1 week
 #define TEMP_HIST_LEN (7*24*60/5)
 // @5min
 #define TEMP_HIST_PERIOD 5*60
 
-const char* ssid = "Canopus";
-const char* password = "B@r@lh@d@";
-const char* hostname = "aquario";
-IPAddress local_IP = INADDR_NONE; //(192, 168, 15, 254);
-IPAddress gateway = INADDR_NONE; //(192, 168, 15, 1);
-IPAddress subnet = INADDR_NONE; //(255, 0, 0, 0);
-IPAddress primaryDNS = INADDR_NONE; //(192, 168, 15, 1);   //optional
-IPAddress secondaryDNS = INADDR_NONE; //(8, 8, 4, 4); //optional
-
-#ifdef TEMP_RECORD
-#endif
-
-uint8_t web_sock_number = 0;
-bool connected = false;
-ESP8266WebServer server(80);
-WebSocketsServer webSocket(81);
-
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "br.pool.ntp.org", -3 * 3600, 60000);
-
 // Interno: 2840e363121901e2
 // Externo: 289a9a7512190146
 #define ONE_WIRE_BUS D2
-#define OUTPUT_PIN D5
+
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature DS18B20(&oneWire);
 
