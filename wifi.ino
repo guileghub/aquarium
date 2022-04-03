@@ -8,7 +8,7 @@ IPAddress primaryDNS = INADDR_NONE; //(192, 168, 15, 1);   //optional
 IPAddress secondaryDNS = INADDR_NONE; //(8, 8, 4, 4); //optional
 
 void setup_wifi() {
-	Serial.println("\nConfiguring access point...");
+  Serial.println("\nConfiguring access point...");
   /*  if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
       Serial.println("STA Failed to configure");
     }*/

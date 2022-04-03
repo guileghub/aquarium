@@ -137,9 +137,9 @@ struct TempDevice {
 
 std::vector<TempDevice> temp_devs;
 
-void setup_temp_record(){
-	SetupDS18B20();
-#error  loop_temp_record(now);
+void setup_temp_record() {
+  SetupDS18B20();
+  loop_temp_record();
 }
 
 //Setting the temperature sensor
@@ -186,9 +186,8 @@ void SetupDS18B20() {
     log += DS18B20.getResolution(temp_devs[i].dev_addr);
     Log(log);
   }
-#ifdef TEMP_RECORD
 }
-
+#if 0
 String GetAddressToString(DeviceAddress deviceAddress) {
   String str = "";
   for (uint8_t i = 0; i < 8; i++) {
@@ -198,8 +197,8 @@ String GetAddressToString(DeviceAddress deviceAddress) {
   }
   return str;
 }
-
-static void fill_temps(JsonDocument &response, unsigned long begin, unsigned long end) {
+#endif
+void fill_temps(JsonDocument &response, unsigned long begin, unsigned long end) {
   //week temp records
   JsonObject temps = response.createNestedObject("temperatures");
   size_t devs_num = temp_devs.size();
@@ -215,6 +214,7 @@ static void fill_temps(JsonDocument &response, unsigned long begin, unsigned lon
     }
   }
 }
+
 void temperatureUpdate(unsigned long time_epoch) {
   if (!connected)
     return;
@@ -225,7 +225,7 @@ void temperatureUpdate(unsigned long time_epoch) {
   webSocket.sendTXT(web_sock_number, message);
 }
 //Loop measuring the temperature
-void loop_temp_record(unsigned long time_epoch) {
+void loop_temp_record() {
   int numberOfDevices = temp_devs.size();
   for (int i = 0; i < numberOfDevices; i++) {
     float tempC = DS18B20.getTempC(temp_devs[i].dev_addr); //Measuring temperature in Celsius

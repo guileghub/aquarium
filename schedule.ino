@@ -3,6 +3,7 @@
 #include <DallasTemperature.h>
 #include <AutoPID.h>
 #include <vector>
+#include <TimeLib.h>
 
 const int sched_cycle = 60;
 int sched_output[SCHED_NUM] = { -1, -1, -1};
@@ -35,14 +36,15 @@ void power_control(int port, bool val) {
   Serial1.print(cmd);
 }
 
-#error  SchedLoop(now);
-void SchedLoop(unsigned long now) {
+void setup_schedule_power_ctrl() {
+  loop_schedule_power_ctrl();
+}
+void loop_schedule_power_ctrl() {
   String log = "SchedLoop ";
   log += timeClient.getFormattedTime();
   Log(log);
-  // if(timeClient.isTimeSet()){
-  int hour = timeClient.getHours();
-  int minutes = timeClient.getMinutes();
+  int hour = hour();
+  int minutes = minute();
   int sched_new[SCHED_NUM];
   if (hour > 17 || hour < 5)
     sched_new[0] = true;

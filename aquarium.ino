@@ -1,34 +1,43 @@
-//#define TEMP_PID_CTRL
-#define TEMP_RECORD
-#define OTA_UPDATE
-#define SCHED_POWER_CTRL
 #define WEB
 #define NTP
+#define OTA_UPDATE
+#define TEMP_RECORD
+#define SCHED_POWER_CTRL
+//#define TEMP_PID_CTRL
 
 #ifdef SCHED_POWER_CTRL
 #define SCHED_NUM 3
 #endif
 
 #ifdef TEMP_RECORD
+#ifndef NTP
+#error TEMP_RECORD requires NTP service
+#endif
 // 1 week
 #define TEMP_HIST_LEN (7*24*60/5)
 // @5min
 #define TEMP_HIST_PERIOD 5*60
-#endif
-
-#ifdef TEMP_RECORD
 #define TEMPERATURE_ONE_WIRE_BUS_PIN D2
 #endif
 
+#ifdef SCHED_POWER_CTRL
+#ifndef NTP
+#error SCHED_POWER_CTRL requires NTP service
+#endif
+#endif
+
 #ifdef TEMP_PID_CTRL
+#ifndef TEMP_RECORD
+#error TEMP_PID_CTRL requires TEMP_RECORD service
+#endif
 #define TEMP_PID_CTRL_OUTPUT_PIN D5
 #endif
 
 void setup() {
-  ESP.wdtEnable(WDTO_8S);
-  Serial.begin(115200);
-  Serial1.begin(9600);
-  delay(1000);
+#ifdef WATCHDOG_ENABLED
+  setup_watchdog()
+#endif
+  setup_log();
   setup_wifi();
 #ifdef OTA_UPDATE
   setup_ota();
@@ -40,9 +49,8 @@ void setup() {
   setup_temp_record();
 #endif
 #ifdef SCHED_POWER_CTRL
-  setup_sched();
+  setup_schedule_power_ctrl();
 #endif
-
 #ifdef TEMP_PID_CTRL
   setup_temp_pid_ctrl();
 #endif
@@ -50,8 +58,9 @@ void setup() {
 }
 
 void loop() {
-  ESP.wdtFeed();
-
+#ifdef WATCHDOG_ENABLED
+  loop_watchdog();
+#endif
 #ifdef OTA_UPDATE
   loop_ota();
 #endif
@@ -59,16 +68,14 @@ void loop() {
   loop_ntp();
 #endif
 #ifdef TEMP_RECORD
-	  loop_temp_record();
+  loop_temp_record();
 #endif
 #ifdef SCHED_POWER_CTRL
-  SchedLoop(now);
+  loop_schedule_power_ctrl(now);
 #endif
-
 #ifdef TEMP_PID_CTRL
   loop_pid_ctrl();
 #endif
-
 #ifdef WEB
   loop_WEB();
 #endif

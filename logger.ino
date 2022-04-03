@@ -1,3 +1,8 @@
+void setup_log() {
+  Serial.begin(115200);
+  delay(1000);
+}
+
 void Log(String &m) {
   Serial.println(m);
   if (!connected) {
