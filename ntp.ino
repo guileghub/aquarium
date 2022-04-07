@@ -1,12 +1,13 @@
 #ifdef NTP
 #include <NTPClient.h>
 #include <WiFiUdp.h>
+#include <TimeLib.h>
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "br.pool.ntp.org", -3 * 3600, 60000);
 
-unsigned long EpochTime() {
-	return timeClient.getEpochTime();
+long long EpochTime() {
+  return timeClient.getEpochTime();
 }
 
 void setup_ntp() {
@@ -17,5 +18,4 @@ void setup_ntp() {
 void loop_ntp() {
   timeClient.update();
 }
-
 #endif

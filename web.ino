@@ -198,4 +198,15 @@ void loop_WEB() {
   server.handleClient();
   webSocket.loop();
 }
+
+void broadcastLog(String &m) {
+  if (!connected) {
+    return;
+  }
+  DynamicJsonDocument log(1024);
+  log["log"] = m;
+  m.clear();
+  serializeJson(log, m);
+  webSocket.broadcastTXT(m);
+}
 #endif

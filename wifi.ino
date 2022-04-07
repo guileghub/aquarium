@@ -9,9 +9,9 @@ IPAddress secondaryDNS = INADDR_NONE; //(8, 8, 4, 4); //optional
 
 void setup_wifi() {
   Serial.println("\nConfiguring access point...");
-  /*  if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
-      Serial.println("STA Failed to configure");
-    }*/
+  if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
+    Serial.println("STA Failed to configure");
+  }
   WiFi.setHostname(hostname);
   Serial.println("WiFi connecting.");
   WiFi.begin(ssid, password);

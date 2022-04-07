@@ -33,6 +33,10 @@
 #define TEMP_PID_CTRL_OUTPUT_PIN D5
 #endif
 
+// Interno: 2840e363121901e2
+// Externo: 289a9a7512190146
+#define TEMPERATURE_ONE_WIRE_BUS_PIN D2
+
 void setup() {
 #ifdef WATCHDOG_ENABLED
   setup_watchdog()
@@ -71,7 +75,7 @@ void loop() {
   loop_temp_record();
 #endif
 #ifdef SCHED_POWER_CTRL
-  loop_schedule_power_ctrl(now);
+  loop_schedule_power_ctrl();
 #endif
 #ifdef TEMP_PID_CTRL
   loop_pid_ctrl();
