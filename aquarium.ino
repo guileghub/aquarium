@@ -1,3 +1,8 @@
+/*
+includes needed to define function prototypes needs to be included here, in order to appear in the beginning of the arduino concatenated file.
+otherwise the generated funtion declaration will use a include that is included after its definition.
+*/
+#include <WebSockets.h>
 #define SCHED_NUM 3
 
 // 1 week

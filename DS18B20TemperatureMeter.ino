@@ -8,19 +8,19 @@
 // Interno: 2840e363121901e2
 // Externo: 289a9a7512190146
 
-struct DS18B20_Device {
+struct dallas_temp_Device {
   DeviceAddress dev_addr;
   String name;
   Recorder<Temperature> history;
-  DS18B20_Device() :
+  dallas_temp_Device() :
     history(TEMP_HIST_PERIOD, TEMP_HIST_LEN) {
   }
 };
 
-struct DS18B20_Bus {
+struct dallas_temp_Bus {
   OneWire oneWire;
-  DallasTemperature DS18B20;
-  std::vector<DS18B20_Device> devices;
+  DallasTemperature dallas_temp;
+  std::vector<dallas_temp_Device> devices;
   static String GetAddressToString(DeviceAddress deviceAddress) {
     String str = "";
     for (uint8_t i = 0; i < 8; i++) {
@@ -31,21 +31,21 @@ struct DS18B20_Bus {
     return str;
   }
 
-  DS18B20_Bus():
-    oneWire(TEMPERATURE_ONE_WIRE_BUS_PIN),	DS18B20(&oneWire) {
-    DS18B20.begin();
-    DS18B20.setWaitForConversion(true);
-    DS18B20.setResolution(10);
+  dallas_temp_Bus():
+    oneWire(TEMPERATURE_ONE_WIRE_BUS_PIN),	dallas_temp(&oneWire) {
+    dallas_temp.begin();
+    dallas_temp.setWaitForConversion(true);
+    dallas_temp.setResolution(10);
 #ifdef LOG
     String log = "Parasite power is: ";
-    if (DS18B20.isParasitePowerMode()) {
+    if (dallas_temp.isParasitePowerMode()) {
       log += "ON";
     } else {
       log += "OFF";
     }
     LOG(log);
 #endif
-    int numberOfDevices = DS18B20.getDeviceCount();
+    int numberOfDevices = dallas_temp.getDeviceCount();
 #ifdef LOG
     log += "Device count: ";
     log += numberOfDevices;
@@ -56,11 +56,11 @@ struct DS18B20_Bus {
       devices.resize(numberOfDevices);
     }
 
-    DS18B20.requestTemperatures();
+    dallas_temp.requestTemperatures();
 
     for (int i = 0; i < numberOfDevices; i++) {
       // Search the wire for address
-      if (DS18B20.getAddress(devices[i].dev_addr, i)) {
+      if (dallas_temp.getAddress(devices[i].dev_addr, i)) {
         devices[i].name = GetAddressToString(devices[i].dev_addr);
 #ifdef LOG
         log += "Found device ";
@@ -80,7 +80,7 @@ struct DS18B20_Bus {
       }
 #ifdef LOG
       log += " Resolution: ";
-      log += DS18B20.getResolution(devices[i].dev_addr);
+      log += dallas_temp.getResolution(devices[i].dev_addr);
       LOG(log);
 #endif
     }
@@ -116,7 +116,9 @@ void temperatureUpdate(unsigned long time_epoch) {
 }
 #endif
 
-DS18B20_Bus temp_bus;
+dallas_temp_Bus temp_bus;
+
+time_t last_temp = 0;
 
 void setup_temp_record() {
 
@@ -127,7 +129,7 @@ void loop_temp_record() {
   unsigned long time_epoch = now();
   int numberOfDevices = temp_bus.devices.size();
   for (int i = 0; i < numberOfDevices; i++) {
-    float tempC = DS18B20.getTempC(temp_bus.devices[i].dev_addr);
+    float tempC = temp_bus.dallas_temp.getTempC(temp_bus.devices[i].dev_addr);
     Temperature t(tempC);
 #ifdef LOG
     String log;
@@ -142,7 +144,7 @@ void loop_temp_record() {
 #endif
     temp_bus.devices[i].history.record(t, time_epoch);
   }
-  DS18B20.requestTemperatures();
+  temp_bus.dallas_temp.requestTemperatures();
   //temperatureUpdate(time_epoch);
   last_temp = time_epoch;  //Remember the last time measurement
 }

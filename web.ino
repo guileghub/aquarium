@@ -1,4 +1,5 @@
 #include <FS.h>
+#include <WebSockets.h>
 #include <WebSocketsServer.h>
 #include <ESP8266WebServer.h>
 #include <ArduinoJson.h>
