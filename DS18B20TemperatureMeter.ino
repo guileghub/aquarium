@@ -1,4 +1,3 @@
-#ifdef RECORD_TEMPERATURE
 #include <vector>
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -88,10 +87,6 @@ struct DS18B20_Bus {
   }
 };
 
-float TemperatureCelsius() {
-  return DS18B20.getTempC(dev_addr);
-}
-
 #if 0
 void fill_temps(JsonDocument &response, unsigned long begin, unsigned long end) {
   //week temp records
@@ -123,12 +118,16 @@ void temperatureUpdate(unsigned long time_epoch) {
 
 DS18B20_Bus temp_bus;
 
+void setup_temp_record() {
+
+}
+
 //Loop measuring the temperature
 void loop_temp_record() {
   unsigned long time_epoch = now();
   int numberOfDevices = temp_bus.devices.size();
   for (int i = 0; i < numberOfDevices; i++) {
-    float tempC = DS18B20.getTempC(temp_bus.devices[i].dev_addr); //Measuring temperature in Celsius
+    float tempC = DS18B20.getTempC(temp_bus.devices[i].dev_addr);
     Temperature t(tempC);
 #ifdef LOG
     String log;
@@ -147,4 +146,3 @@ void loop_temp_record() {
   //temperatureUpdate(time_epoch);
   last_temp = time_epoch;  //Remember the last time measurement
 }
-#endif

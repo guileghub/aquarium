@@ -1,6 +1,3 @@
-#ifdef TEMP_RECORD
-#include <OneWire.h>
-#include <DallasTemperature.h>
 #include <AutoPID.h>
 #include <vector>
 #include <TimeLib.h>
@@ -62,4 +59,3 @@ void loop_schedule_power_ctrl() {
     }
   }
 }
-#endif

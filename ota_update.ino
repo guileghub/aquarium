@@ -1,4 +1,3 @@
-#ifdef OTA_UPDATE
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
@@ -56,4 +55,3 @@ void setup_ota() {
 void loop_ota() {
   ArduinoOTA.handle();
 }
-#endif

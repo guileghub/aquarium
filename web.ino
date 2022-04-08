@@ -1,5 +1,3 @@
-#ifdef WEB
-
 #include <FS.h>
 #include <WebSocketsServer.h>
 #include <ESP8266WebServer.h>
@@ -142,7 +140,6 @@ void send_update() {
 void parse_message(uint8_t *payload,
                    size_t length) {
   String log;
-  int numberOfDevices = temp_devs.size();
   StaticJsonDocument<1024> json;
   DeserializationError error = deserializeJson(json, payload, length);
   if (error) {
@@ -181,7 +178,7 @@ void parse_message(uint8_t *payload,
 #endif
   JsonVariant outputs = obj.getMember("outputs");
   if (outputs.is<JsonArray>()) {
-    for (int i = 0; i < numberOfDevices; i++) {
+    for (int i = 0; i < SCHED_NUM; i++) {
       JsonVariant output = outputs.getElement(i);
       if (!output.isNull()) {
         bool v = output.as<bool>();
@@ -209,4 +206,3 @@ void broadcastLog(String &m) {
   serializeJson(log, m);
   webSocket.broadcastTXT(m);
 }
-#endif

@@ -1,4 +1,3 @@
-#ifdef NTP
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <TimeLib.h>
@@ -18,4 +17,3 @@ void setup_ntp() {
 void loop_ntp() {
   timeClient.update();
 }
-#endif
