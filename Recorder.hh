@@ -1,16 +1,7 @@
-#ifndef RECORDER
-#define RECORDER
+#ifndef RECORDER_HH
+#define RECORDER_HH
 #include <vector>
 #include <TimeLib.h>
-
-#if 0
-template<class T> class Meter {
-  protected:
-    virtual ~Meter();
-  public:
-    virtual T Measure() = 0;
-};
-#endif
 
 template<class T> class Recorder {
     std::vector<T> history;

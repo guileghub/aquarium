@@ -1,3 +1,6 @@
+#include "log.hh"
+void broadcastLog(String &m);
+
 void setup_log() {
   Serial.begin(115200);
   delay(1000);
@@ -5,9 +8,7 @@ void setup_log() {
 
 void Log(String &m) {
   Serial.println(m);
-#ifdef WEB
   broadcastLog(m);
-#endif
   m.clear();
 }
 

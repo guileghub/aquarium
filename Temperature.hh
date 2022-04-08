@@ -1,9 +1,9 @@
-#ifndef TEMPERATURE
-#define TEMPERATURE
+#ifndef TEMPERATURE_HH
+#define TEMPERATURE_HH
 
 class Temperature {
-public:
   unsigned char value;
+public:
   Temperature();
   Temperature(float temp);
   operator float() const;
