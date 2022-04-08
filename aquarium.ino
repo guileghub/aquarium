@@ -1,7 +1,7 @@
 #define WEB
 #define NTP
 #define OTA_UPDATE
-#define TEMP_RECORD
+#define RECORD_TEMPERATURE
 #define SCHED_POWER_CTRL
 //#define TEMP_PID_CTRL
 
