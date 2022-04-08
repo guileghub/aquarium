@@ -1,11 +1,8 @@
-const char* ssid = "Canopus";
-const char* password = "B@r@lh@d@";
-const char* hostname = "aquario";
-IPAddress local_IP = INADDR_NONE; //(192, 168, 15, 254);
-IPAddress gateway = INADDR_NONE; //(192, 168, 15, 1);
-IPAddress subnet = INADDR_NONE; //(255, 0, 0, 0);
-IPAddress primaryDNS = INADDR_NONE; //(192, 168, 15, 1);   //optional
-IPAddress secondaryDNS = INADDR_NONE; //(8, 8, 4, 4); //optional
+IPAddress local_IP;
+IPAddress gateway;
+IPAddress subnet;
+IPAddress primaryDNS;
+IPAddress secondaryDNS;
 
 void setup_wifi() {
   Serial.println("\nConfiguring access point...");

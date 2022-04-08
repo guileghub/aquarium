@@ -6,6 +6,10 @@
 #include "log.hh"
 #define SCHED_NUM 3
 
+const char* ssid = "Canopus";
+const char* password = "B@r@lh@d@";
+const char* hostname = "aquarium";
+
 // 1 week
 #define TEMP_HIST_LEN (7*24*60/5)
 // @5min
@@ -24,7 +28,8 @@ void setup() {
   setup_ntp();
   setup_temp_record();
   setup_schedule_power_ctrl();
-  setup_temp_pid_ctrl();
+  //setup_temp_pid_ctrl();
+  setup_WEB();
   yield();
 }
 
@@ -34,6 +39,6 @@ void loop() {
   loop_ntp();
   loop_temp_record();
   loop_schedule_power_ctrl();
-  loop_pid_ctrl();
+  //loop_pid_ctrl();
   loop_WEB();
 }

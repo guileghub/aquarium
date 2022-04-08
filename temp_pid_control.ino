@@ -1,3 +1,4 @@
+#if 0
 #include <AutoPID.h>
 #define TEMP_PID_CTRL_OUTPUT_PIN D5
 double target_temperature = 0;
@@ -51,3 +52,4 @@ void loop_pid_ctrl() {
   }
   digitalWrite(TEMP_PID_CTRL_OUTPUT_PIN, output);
 }
+#endif

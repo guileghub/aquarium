@@ -36,21 +36,21 @@ void setup_schedule_power_ctrl() {
   loop_schedule_power_ctrl();
 }
 void loop_schedule_power_ctrl() {
-  String log = "SchedLoop ";
-  log += timeClient.getFormattedTime();
-  Log(log);
   int h = hour();
   int m = minute();
   int sched_new[SCHED_NUM];
-  if (h > 17 || h < 5)
+  if (m < 20)
     sched_new[0] = true;
   else
     sched_new[0] = false;
-  if (h > 6 || h < 18)
-    sched_new[1] = false;
-  else
+  if (m >= 20 && m < 40)
     sched_new[1] = true;
-  sched_new[2] = sched_output[2];
+  else
+    sched_new[1] = false;
+  if (m >= 40)
+    sched_new[2] = true;
+  else
+    sched_new[2] = false;
 
   for (unsigned x = 0; x < SCHED_NUM; x++) {
     if (sched_new[x] != sched_output[x]) {

@@ -3,9 +3,9 @@
 #include <WebSocketsServer.h>
 #include <ESP8266WebServer.h>
 #include <ArduinoJson.h>
+#include <set>
 
-uint8_t web_sock_number = 0;
-bool connected = false;
+std::set<uint8_t> web_sock_clients;
 ESP8266WebServer server(80);
 WebSocketsServer webSocket(81);
 
@@ -32,7 +32,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload,
   switch (type) {
     case WStype_DISCONNECTED:
       Serial.printf("[%u] Disconnected!\n", num);
-      connected = false;
+      web_sock_clients.erase(num);
       yield();
       break;
 
@@ -41,8 +41,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload,
         Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0],
                       ip[1], ip[2], ip[3], payload);
         yield();
-        web_sock_number = num;
-        connected = true;
+        web_sock_clients.insert(num);
         send_update();
         break;
       }
@@ -58,8 +57,13 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload,
 
     case WStype_ERROR:
       Serial.printf("Error [%u] , %s\n", num, payload);
-      connected = false;
+      web_sock_clients.erase(num);
       yield();
+  }
+  for (auto i = web_sock_clients.begin(), e = web_sock_clients.begin(); i != e;) {
+    auto it = i++;
+    if (!webSocket.clientIsConnected(*it))
+      web_sock_clients.erase(*it);
   }
 }
 
@@ -124,7 +128,7 @@ bool handleFileRead(String path) {
 }
 
 void send_update() {
-  if (!connected)
+  if (webSocket.connectedClients() <= 0)
     return;
   DynamicJsonDocument status(4096);
 #ifdef AUTOPID
@@ -135,7 +139,7 @@ void send_update() {
 #endif
   String message;
   serializeJson(status, message);
-  webSocket.sendTXT(web_sock_number, message);
+  webSocket.broadcastTXT(message);
 }
 
 void parse_message(uint8_t *payload,
@@ -198,9 +202,8 @@ void loop_WEB() {
 }
 
 void broadcastLog(String &m) {
-  if (!connected) {
+  if (webSocket.connectedClients() <= 0)
     return;
-  }
   DynamicJsonDocument log(1024);
   log["log"] = m;
   m.clear();
