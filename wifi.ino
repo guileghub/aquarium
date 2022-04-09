@@ -19,7 +19,6 @@ void setup_wifi() {
     } */
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("Connection Failed! Rebooting...");
-    delay(5000);
     ESP.restart();
   }
   Serial.print("Ready! Use 'http://");

@@ -42,7 +42,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload,
                       ip[1], ip[2], ip[3], payload);
         yield();
         web_sock_clients.insert(num);
-        send_update();
         break;
       }
 
@@ -50,7 +49,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload,
       {
         Serial.printf("[%u] get Text: %s [%d]\n", num, payload, length);
         //String message((char*)payload);
-        parse_message(payload, length);
+        parse_message(payload, length, num);
         yield();
       }
       break;
@@ -127,23 +126,10 @@ bool handleFileRead(String path) {
   return false;
 }
 
-void send_update() {
-  if (webSocket.connectedClients() <= 0)
-    return;
-  DynamicJsonDocument status(4096);
-#ifdef AUTOPID
-  if (pid_enabled) {
-    status["targetTemperature"] = target_temperature;
-  }
-  status["power"] = !!output;
-#endif
-  String message;
-  serializeJson(status, message);
-  webSocket.broadcastTXT(message);
-}
+void do_reboot();
 
 void parse_message(uint8_t *payload,
-                   size_t length) {
+                   size_t length, uint8_t num) {
   String log;
   StaticJsonDocument<1024> json;
   DeserializationError error = deserializeJson(json, payload, length);
@@ -159,29 +145,11 @@ void parse_message(uint8_t *payload,
     return;
   }
   JsonVariant reboot = obj.getMember("reboot");
-  if (reboot.is<bool>()) {
-    if (reboot.as<bool>())
-      ESP.restart();
-  }
-#ifdef AUTOPID
-  JsonVariant targetTemperature = obj.getMember("targetTemperature");
-  if (targetTemperature.is<double>()) {
-    target_temperature = targetTemperature.as<double>();
-    pid_enabled = true;
-    log = String("targetTemperature=> pid_enabled=") + pid_enabled + ", output=" + output;
-    Log(log);
-    return;
-  }
-  JsonVariant power = obj.getMember("power");
-  if (power.is<bool>()) {
-    pid_enabled = false;
-    output = (bool) power;
-    log = String("POWER=> pid_enabled=") + pid_enabled + ", output=" + output;
-    Log(log);
-    return;
-  }
-#endif
+  if (reboot.is<bool>() && reboot.as<bool>())
+    do_reboot();
+
   JsonVariant outputs = obj.getMember("outputs");
+  
   if (outputs.is<JsonArray>()) {
     for (int i = 0; i < SCHED_NUM; i++) {
       JsonVariant output = outputs.getElement(i);
@@ -201,12 +169,8 @@ void loop_WEB() {
   webSocket.loop();
 }
 
-void broadcastLog(String &m) {
+void broadcast_message(String &m) {
   if (webSocket.connectedClients() <= 0)
     return;
-  DynamicJsonDocument log(1024);
-  log["log"] = m;
-  m.clear();
-  serializeJson(log, m);
   webSocket.broadcastTXT(m);
 }

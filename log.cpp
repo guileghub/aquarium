@@ -1,14 +1,20 @@
 #include "log.hh"
-void broadcastLog(String &m);
+#include <ArduinoJson.h>
+
+void broadcast_message(String &m);
 
 void setup_log() {
   Serial.begin(115200);
-  delay(1000);
+  delay(100);
 }
 
 void Log(String &m) {
   Serial.println(m);
-  broadcastLog(m);
+  DynamicJsonDocument log(1024);
+  log["log"] = m;
+  m.clear();
+  serializeJson(log, m);
+  broadcast_message(m);
   m.clear();
 }
 

@@ -1,8 +1,8 @@
-#include <AutoPID.h>
 #include <vector>
 #include <TimeLib.h>
 
 const int sched_cycle = 60;
+time_t last_sched_status = 0;
 int sched_output[SCHED_NUM] = { -1, -1, -1};
 
 const int temp_cycle = 1; // @1s
@@ -33,21 +33,26 @@ void power_control(int port, bool val) {
 }
 
 void setup_schedule_power_ctrl() {
+  Serial1.begin(9600);
   loop_schedule_power_ctrl();
 }
 void loop_schedule_power_ctrl() {
-  int h = hour();
-  int m = minute();
+  time_t t = now();
+  if (t == last_sched_status)
+    return;
+  int h = hour(t);
+  int m = minute(t);
+  int s = second(t);
   int sched_new[SCHED_NUM];
-  if (m < 20)
+  if (h < 7 || h > 23)
     sched_new[0] = true;
   else
     sched_new[0] = false;
-  if (m >= 20 && m < 40)
+  if (h > 7 || h < 23 )
     sched_new[1] = true;
   else
     sched_new[1] = false;
-  if (m >= 40)
+  if (h > 19 || h < 22)
     sched_new[2] = true;
   else
     sched_new[2] = false;
@@ -58,4 +63,31 @@ void loop_schedule_power_ctrl() {
       power_control(x + 1, sched_output[x]);
     }
   }
+  if (t % 5)
+    return;
+#ifdef LOG
+  String log;
+  int ye = year(t);
+  int mo = month(t);
+  int da = day(t);
+  log += ye;
+  log += '-';
+  log += mo;
+  log += '-';
+  log += da;
+  log += ' ';
+  log += h;
+  log += ':';
+  log += m;
+  log += ':';
+  log += s;
+  log += " loop_schedule_power_ctrl : [";
+  for (unsigned x = 0; x < SCHED_NUM; x++) {
+    if (x) log += ',';
+    log += sched_output[x];
+  }
+  log += ']';
+  LOG(log);
+#endif
+  last_sched_status = t;
 }
