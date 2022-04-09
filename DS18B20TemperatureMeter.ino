@@ -4,6 +4,7 @@
 //typedef uint8_t DeviceAddress[8];
 #include "Temperature.hh"
 #include "Recorder.hh"
+#include "log.hh"
 
 // Interno: 2840e363121901e2
 // Externo: 289a9a7512190146
@@ -37,7 +38,7 @@ struct DallasTempBus {
   DallasTempBus():
     oneWire(TEMPERATURE_ONE_WIRE_BUS_PIN),	dallas_temp(&oneWire) {
     dallas_temp.begin();
-    dallas_temp.setWaitForConversion(true);
+    dallas_temp.setWaitForConversion(false);
     dallas_temp.setResolution(10);
 #ifdef LOG
     String log = "Parasite power is: ";
@@ -48,6 +49,7 @@ struct DallasTempBus {
     }
     LOG(log);
 #endif
+    dallas_temp.requestTemperatures();
     int numberOfDevices = dallas_temp.getDeviceCount();
 #ifdef LOG
     log += "Device count: ";
@@ -58,8 +60,6 @@ struct DallasTempBus {
       devices.clear();
       devices.resize(numberOfDevices);
     }
-
-    dallas_temp.requestTemperatures();
 
     for (int i = 0; i < numberOfDevices; i++) {
       // Search the wire for address
@@ -119,7 +119,7 @@ void temperatureUpdate(time_type time_epoch) {
 }
 #endif
 
-//DallasTempBus temp_bus;
+DallasTempBus temp_bus;
 
 time_t last_temp = 0;
 
