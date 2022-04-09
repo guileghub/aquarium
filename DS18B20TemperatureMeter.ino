@@ -20,7 +20,7 @@ struct dallas_temp_Device {
   }
 };
 
-struct dallas_temp_Bus {
+struct DallasTempBus {
   OneWire oneWire;
   DallasTemperature dallas_temp;
   std::vector<dallas_temp_Device> devices;
@@ -34,7 +34,7 @@ struct dallas_temp_Bus {
     return str;
   }
 
-  dallas_temp_Bus():
+  DallasTempBus():
     oneWire(TEMPERATURE_ONE_WIRE_BUS_PIN),	dallas_temp(&oneWire) {
     dallas_temp.begin();
     dallas_temp.setWaitForConversion(true);
@@ -119,7 +119,7 @@ void temperatureUpdate(unsigned long time_epoch) {
 }
 #endif
 
-//dallas_temp_Bus temp_bus;
+//DallasTempBus temp_bus;
 
 time_t last_temp = 0;
 

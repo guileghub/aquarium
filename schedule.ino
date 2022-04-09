@@ -44,9 +44,9 @@ void loop_schedule_power_ctrl() {
   int m = minute(t);
   int s = second(t);
   int sched_new[SCHED_NUM];
-  sched_new[0] = (h < 7 || h > 23);
-  sched_new[0] = (h > 19 || h < 22);
-  sched_new[0] = (h < 7 || h > 23);
+  sched_new[0] = (h < 3 || h > 21); // 0-6 18-24
+  sched_new[1] = (h > 9 || h < 21); // 6-18
+  sched_new[2] = (h > 22 || h < 2); // 19-23
   for (unsigned x = 0; x < SCHED_NUM; x++) {
     if (sched_new[x] != sched_output[x]) {
       sched_output[x] = sched_new[x];
@@ -57,7 +57,7 @@ void loop_schedule_power_ctrl() {
     return;
 #ifdef LOG
   String log = toISOString(t);
-  log += " loop_schedule_power_ctrl : [";
+  log += " loop_schedule_power_ctrl: [";
   for (unsigned x = 0; x < SCHED_NUM; x++) {
     if (x) log += ',';
     log += sched_output[x];
