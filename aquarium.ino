@@ -20,6 +20,11 @@ const char* hostname = "aquarium";
 // Interno: 2840e363121901e2
 // Externo: 289a9a7512190146
 
+void do_reboot() {
+  ESP.restart();
+}
+
+
 void setup() {
   setup_watchdog();
   setup_log();
