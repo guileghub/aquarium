@@ -130,26 +130,37 @@ void setup_temp_record() {
 //Loop measuring the temperature
 void loop_temp_record() {
   time_t time_epoch = now();
-#if 0
+  if (time_epoch == last_temp)
+    return;
   int numberOfDevices = temp_bus.devices.size();
   for (int i = 0; i < numberOfDevices; i++) {
     float tempC = temp_bus.dallas_temp.getTempC(temp_bus.devices[i].dev_addr);
     Temperature t(tempC);
 #ifdef LOG
-    String log;
-    log += "Temperature[";
-    log += temp_bus.devices[i].name;
-    log += "]@(";
-    log += time_epoch;
-    log += ")=";
-    log += tempC;
-    log += "C";
-    Log(log);
+    if (0 == second(time_epoch) % 5) {
+      String log = toISOString(time_epoch);
+      log += " Temperature[";
+      log += temp_bus.devices[i].name;
+      log += "]=";
+      log += tempC;
+      log += "C";
+      Log(log);
+    }
 #endif
-    temp_bus.devices[i].history.record(t, time_epoch);
+
+    if (!second(time_epoch)) {
+      temp_bus.devices[i].history.record(t, time_epoch);
+#ifdef LOG
+      String log = toISOString(time_epoch);
+      log += " temp_bus.devices[";
+      log += temp_bus.devices[i].name;
+      log += "].history records:";
+      log += temp_bus.devices[i].history.history.size();
+      Log(log);
+#endif
+    }
   }
   temp_bus.dallas_temp.requestTemperatures();
   //temperatureUpdate(time_epoch);
-#endif
   last_temp = time_epoch;  //Remember the last time measurement
 }

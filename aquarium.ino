@@ -30,7 +30,7 @@ void setup() {
   setup_wifi();
   setup_ota();
   setup_ntp();
-  //  setup_temp_record();
+  setup_temp_record();
   setup_schedule_power_ctrl();
   //setup_temp_pid_ctrl();
   setup_WEB();
@@ -44,7 +44,7 @@ void loop() {
     Log("Time not sync yet, waiting.");
     return;
   }
-  //  loop_temp_record();
+  loop_temp_record();
   loop_schedule_power_ctrl();
   //loop_pid_ctrl();
   loop_WEB();
