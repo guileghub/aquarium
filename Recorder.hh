@@ -3,12 +3,12 @@
 #include <vector>
 #include <TimeLib.h>
 
-template<class T> class Recorder {
-    std::vector<T> history;
+template<class Time, class Record> class Recorder {
+    std::vector<Record> history;
     size_t time_interval;
     size_t capacity;
     size_t current;
-    time_t lastRecordEpochTime;
+    Time lastRecordEpochTime;
     void clear() {
       current = 0, lastRecordEpochTime = 0;
       history.clear();
@@ -18,7 +18,7 @@ template<class T> class Recorder {
       time_interval(time_interval), capacity(capacity) {
       clear();
     }
-    void addRecord(T const& t) {
+    void addRecord(Record const& t) {
       if (history.size() <= capacity) {
         history.push_back(t);
         current = history.size();
@@ -29,14 +29,14 @@ template<class T> class Recorder {
         current++;
       }
     }
-    void updateRecord(T const& t) {
+    void updateRecord(Record const& t) {
       if (history.empty())
         addRecord(t);
       else
         history[current - 1] = t;
     }
 
-    void record(T const& t, time_t epochTime) {
+    void record(Record const& t, Time epochTime) {
       if (epochTime < lastRecordEpochTime)
         clear();
       if (!lastRecordEpochTime)
@@ -48,13 +48,13 @@ template<class T> class Recorder {
       }
       if (gap) {
         while (gap--)
-          addRecord (T());
+          addRecord (Record());
         lastRecordEpochTime = epochTime;
       }
       updateRecord(t);
     }
-    std::vector<T> query(time_t begin, time_t end) {
-      std::vector < T > result;
+    std::vector<Record> query(Time begin, Time end) {
+      std::vector < Record > result;
       size_t size = history.size();
       long deltaBegin = (lastRecordEpochTime - begin) / time_interval;
       if (deltaBegin >= size)

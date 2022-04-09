@@ -14,7 +14,7 @@
 struct dallas_temp_Device {
   DeviceAddress dev_addr;
   String name;
-  Recorder<Temperature> history;
+  Recorder<time_t, Temperature> history;
   dallas_temp_Device() :
     history(TEMP_HIST_PERIOD, TEMP_HIST_LEN) {
   }
@@ -91,7 +91,7 @@ struct DallasTempBus {
 };
 
 #if 0
-void fill_temps(JsonDocument &response, unsigned long begin, unsigned long end) {
+void fill_temps(JsonDocument &response, time_type begin, time_type end) {
   //week temp records
   JsonObject temps = response.createNestedObject("temperatures");
   size_t devs_num = devices.size();
@@ -108,7 +108,7 @@ void fill_temps(JsonDocument &response, unsigned long begin, unsigned long end) 
   }
 }
 
-void temperatureUpdate(unsigned long time_epoch) {
+void temperatureUpdate(time_type time_epoch) {
   if (!connected)
     return;
   DynamicJsonDocument response(4096);
@@ -129,8 +129,8 @@ void setup_temp_record() {
 
 //Loop measuring the temperature
 void loop_temp_record() {
-  unsigned long time_epoch = now();
-  #if 0
+  time_t time_epoch = now();
+#if 0
   int numberOfDevices = temp_bus.devices.size();
   for (int i = 0; i < numberOfDevices; i++) {
     float tempC = temp_bus.dallas_temp.getTempC(temp_bus.devices[i].dev_addr);
@@ -150,6 +150,6 @@ void loop_temp_record() {
   }
   temp_bus.dallas_temp.requestTemperatures();
   //temperatureUpdate(time_epoch);
-  #endif
+#endif
   last_temp = time_epoch;  //Remember the last time measurement
 }
