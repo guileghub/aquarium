@@ -7,6 +7,9 @@
 
 // Interno: 2840e363121901e2
 // Externo: 289a9a7512190146
+#if !defined(TEMP_HIST_LEN) || !defined(TEMP_HIST_PERIOD) || !defined(TEMPERATURE_ONE_WIRE_BUS_PIN)
+#error defines missing
+#endif
 
 struct dallas_temp_Device {
   DeviceAddress dev_addr;
@@ -116,7 +119,7 @@ void temperatureUpdate(unsigned long time_epoch) {
 }
 #endif
 
-dallas_temp_Bus temp_bus;
+//dallas_temp_Bus temp_bus;
 
 time_t last_temp = 0;
 
@@ -127,6 +130,7 @@ void setup_temp_record() {
 //Loop measuring the temperature
 void loop_temp_record() {
   unsigned long time_epoch = now();
+  #if 0
   int numberOfDevices = temp_bus.devices.size();
   for (int i = 0; i < numberOfDevices; i++) {
     float tempC = temp_bus.dallas_temp.getTempC(temp_bus.devices[i].dev_addr);
@@ -146,5 +150,6 @@ void loop_temp_record() {
   }
   temp_bus.dallas_temp.requestTemperatures();
   //temperatureUpdate(time_epoch);
+  #endif
   last_temp = time_epoch;  //Remember the last time measurement
 }

@@ -24,14 +24,13 @@ void do_reboot() {
   ESP.restart();
 }
 
-
 void setup() {
   setup_watchdog();
   setup_log();
   setup_wifi();
   setup_ota();
   setup_ntp();
-  setup_temp_record();
+  //  setup_temp_record();
   setup_schedule_power_ctrl();
   //setup_temp_pid_ctrl();
   setup_WEB();
@@ -41,8 +40,11 @@ void setup() {
 void loop() {
   loop_watchdog();
   loop_ota();
-  loop_ntp();
-  loop_temp_record();
+  if (!loop_ntp()) {
+    Log("Time not sync yet, waiting.");
+    return;
+  }
+  //  loop_temp_record();
   loop_schedule_power_ctrl();
   //loop_pid_ctrl();
   loop_WEB();

@@ -44,19 +44,9 @@ void loop_schedule_power_ctrl() {
   int m = minute(t);
   int s = second(t);
   int sched_new[SCHED_NUM];
-  if (h < 7 || h > 23)
-    sched_new[0] = true;
-  else
-    sched_new[0] = false;
-  if (h > 7 || h < 23 )
-    sched_new[1] = true;
-  else
-    sched_new[1] = false;
-  if (h > 19 || h < 22)
-    sched_new[2] = true;
-  else
-    sched_new[2] = false;
-
+  sched_new[0] = (h < 7 || h > 23);
+  sched_new[0] = (h > 19 || h < 22);
+  sched_new[0] = (h < 7 || h > 23);
   for (unsigned x = 0; x < SCHED_NUM; x++) {
     if (sched_new[x] != sched_output[x]) {
       sched_output[x] = sched_new[x];
@@ -66,21 +56,7 @@ void loop_schedule_power_ctrl() {
   if (t % 5)
     return;
 #ifdef LOG
-  String log;
-  int ye = year(t);
-  int mo = month(t);
-  int da = day(t);
-  log += ye;
-  log += '-';
-  log += mo;
-  log += '-';
-  log += da;
-  log += ' ';
-  log += h;
-  log += ':';
-  log += m;
-  log += ':';
-  log += s;
+  String log = toISOString(t);
   log += " loop_schedule_power_ctrl : [";
   for (unsigned x = 0; x < SCHED_NUM; x++) {
     if (x) log += ',';
