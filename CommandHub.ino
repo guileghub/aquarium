@@ -17,7 +17,7 @@ void parse_message(uint8_t *payload, size_t length, std::function<void(String&)>
     Log("Error, JSON object expected.");
     return;
   }
-  JsonVariant reboot = obj.getMember("reboot");
+  JsonVariant reboot = obj.getMember("Reboot");
   if (reboot.is<bool>() && reboot.as<bool>())
     do_reboot();
 
@@ -34,6 +34,16 @@ void parse_message(uint8_t *payload, size_t length, std::function<void(String&)>
     }
     String res = ports_asjson();
     reply(res);
+    return;
+  }
+  JsonVariant pps = obj.getMember("PortPowerStatus");
+  if (!pps.isNull()) {
+    broadcast_ports();
+    return;
+  }
+  JsonVariant bi = obj.getMember("BoardInfo");
+  if (!bi.isNull()) {
+    broadcast_boardinfo();
     return;
   }
   Log("unknown command");

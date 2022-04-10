@@ -28,6 +28,20 @@ const char* hostname = "aquarium";
 void do_reboot() {
   ESP.restart();
 }
+
+void broadcast_boardinfo() {
+  DynamicJsonDocument bi(1024);
+  bi["chipId"] = ESP.getChipId();
+  bi["cpuFreqMHz"] = ESP.getCpuFreqMHz();
+  bi["resetReason"] = ESP.getResetReason();
+  bi["freeHeap"] = ESP.getFreeHeap();
+  bi["heapFragmentation"] = ESP.getHeapFragmentation();
+  bi["maxFreeBlockSize"] = ESP.getMaxFreeBlockSize();
+  String m;
+  serializeJson(bi, m);
+  broadcast_message(m);
+}
+
 time_t l;
 void setup() {
   setup_watchdog();
@@ -58,21 +72,4 @@ void loop() {
   if (t == l)
     return;
   l = t;
-  if (second(t))
-    return;
-  String log;
-  log += toISOString(t);
-  log += ' ';
-  log += ESP.getChipId();
-  log += "@";
-  log += ESP.getCpuFreqMHz();
-  log += "MHz getResetReason: ";
-  log += ESP.getResetReason();
-  log += " getFreeHeap: ";
-  log += ESP.getFreeHeap();
-  log += " getHeapFragmentation: ";
-  log += ESP.getHeapFragmentation();
-  log += " getMaxFreeBlockSize: ";
-  log += ESP.getMaxFreeBlockSize();
-  Log(log);
 }

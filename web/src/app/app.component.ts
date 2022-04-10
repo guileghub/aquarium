@@ -12,8 +12,10 @@ export class AppComponent implements OnInit, OnDestroy {
     baseUrl: string;
     title = 'Aquarium';
     //temperatures$: Observable<number>;
+    boardInfo$: Observable<object>;
     constructor(@Inject(ControllerService) public controller: ControllerService) {
         //this.temperatures$ = this.controller.status$.pipe(pluck('CurrentTemperatures'));
+        this.boardInfo$ = this.controller.boardInfo$;
     }
     ngOnInit() {
         this.baseUrl = window.location.origin.replace("http:", "ws:") + ":81";
@@ -24,5 +26,11 @@ export class AppComponent implements OnInit, OnDestroy {
     }
     Connect() {
         this.controller.connect(this.baseUrl);
+    }
+    Reboot() {
+        this.controller.Send({ Reboot: true });
+    }
+    BoardInfo() {
+        this.controller.Send({ BoardInfo: true });
     }
 }
