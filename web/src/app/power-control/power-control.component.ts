@@ -2,6 +2,7 @@ import { Component, Input, Inject, OnInit } from '@angular/core';
 import { CurrentPower } from '../port-power';
 import { ControllerService } from '../controller.service';
 import { Observable } from 'rxjs';
+import { FormControl } from '@angular/forms';
 
 @Component({
     selector: 'power-control',
@@ -9,12 +10,13 @@ import { Observable } from 'rxjs';
     styleUrls: ['./power-control.component.css']
 })
 export class PowerControlComponent implements OnInit {
+    fontPowerMode = new FormControl();
     ports = {
         CurrentPower: [undefined, undefined, undefined],
         ScheduledPower: [undefined, undefined, undefined],
         SelectedPower: [undefined, undefined, undefined],
     };
-    portConfig: Array<number> = [];
+    portConfig: Array<{ p: string }> = [];
     @Input('portPower') portPower$: Observable<CurrentPower>;
     constructor(@Inject(ControllerService) public controller: ControllerService) { }
     ngOnInit(): void {
@@ -29,12 +31,12 @@ export class PowerControlComponent implements OnInit {
             this.RefreshPortConfig();
         });
     }
-    portChange(p: number, v: number) {
+    portChange(p: number, v: string) {
         switch (v) {
-            case 0:
+            case '0':
                 this.ports.SelectedPower[p] = false;
                 break;
-            case 1:
+            case '1':
                 this.ports.SelectedPower[p] = true;
                 break;
             default:
@@ -46,11 +48,11 @@ export class PowerControlComponent implements OnInit {
     RefreshPortConfig() {
         for (let i in this.ports.SelectedPower) {
             if (this.ports.SelectedPower[i] === false)
-                this.portConfig[i] = 0;
+                this.portConfig[i] = { p: '0' };
             else if (this.ports.SelectedPower[i] === true)
-                this.portConfig[i] = 1;
+                this.portConfig[i] = { p: '1' };
             else
-                this.portConfig[i] = 2;
+                this.portConfig[i] = { p: '2' };
         }
     }
 }

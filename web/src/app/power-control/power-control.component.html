@@ -1,21 +1,25 @@
-<div style="border: solid red 1px">{{portPower$|async|json}}</div>
+<!-- <div style="border: solid red 1px">{{portPower$|async|json}}</div>
 <div style="border: solid blue 1px">{{portConfig|json}}</div>
 <div style="border: solid orange 1px">{{ports|json}}</div>
 <ng-template ngFor let-port [ngForOf]="portConfig" let-i="index">
-<div style="border: solid green 1px">TESTE_{{i}} {{port|json}}</div>
- <mat-radio-group [value]="portConfig[i]" (change)="portChange(i,$event.value)" [name]="'pwrctrl_'+i">
-  <mat-radio-button [value]="0">OFF</mat-radio-button>
-  <mat-radio-button [value]="1">ON</mat-radio-button>
-  <mat-radio-button [value]="2">Schedule</mat-radio-button>
- </mat-radio-group>
- Port {{i}} power:{{ports.CurrentPower[i]?'⚡':'🔌'}}
-  <ng-template [ngIf]="ports.SelectedPower!==undefined">
-  <button mat-mini-fab *ngIf="ports.SelectedPower[i]===true" matTooltip="ALWAYS ON">✅</button>
-  <button mat-mini-fab *ngIf="ports.SelectedPower[i]===false" matTooltip="ALWAYS OFF">❎</button>
-  <button mat-mini-fab *ngIf="ports.SelectedPower[i]===null" matTooltip="SCHEDULE">⏰</button>
-  </ng-template>
-  <ng-template [ngIf]="ports.ScheduledPower!==undefined"> 
-  <button mat-mini-fab *ngIf="ports.ScheduledPower[i]===true" matTooltip="ACTIVE PERIOD">⤴</button>
-  <button mat-mini-fab *ngIf="ports.ScheduledPower[i]===false" matTooltip="INACTIVE PERIOD">⤵</button>
-  </ng-template>
-</ng-template>
+ -->
+<!--  <mat-radio-group (ngModel)]="port.p" (change)="portChange(i,$event.value)" [name]="'pwrctrl_'+i">
+  <mat-radio-button value="0">OFF</mat-radio-button>
+  <mat-radio-button value="1">ON</mat-radio-button>
+  <mat-radio-button value="2">Schedule</mat-radio-button>
+ </mat-radio-group> -->
+<div *ngFor="let port of portConfig; index as i">
+    Port {{i}} power:{{ports.CurrentPower[i]?'⚡':'🔌'}}<br />
+    <ng-template [ngIf]="ports.SelectedPower!==undefined">
+    <mat-button-toggle-group [(ngModel)]="port.p"
+        name="power_mode_{{i}}" aria-label="Port Power Mode"
+        [value]="portConfig[i]" (change)="portChange(i,$event.value)">
+    <mat-button-toggle value="0">❎ALWAYS OFF</mat-button-toggle> <mat-button-toggle
+        value="1">✅ALWAYS ON</mat-button-toggle> <mat-button-toggle
+        value="2">⏰SCHEDULE<ng-template
+        [ngIf]="ports.ScheduledPower!==undefined&&ports.ScheduledPower[i]===true">⤴(ACTIVE
+    PERIOD)</ng-template>
+    <ng-template
+        [ngIf]="ports.ScheduledPower!==undefined&&ports.ScheduledPower[i]===false">⤵(INACTIVE
+    PERIOD)</ng-template></mat-button-toggle> </mat-button-toggle-group> </ng-template>
+</div>
