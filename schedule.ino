@@ -73,6 +73,7 @@ void loop_schedule_power_ctrl() {
   time_t t = now();
   if (t == last_sched_status)
     return;
+  last_sched_status = t;
   int h = hour(t);
   int m = minute(t);
   int s = second(t);
@@ -104,5 +105,4 @@ void loop_schedule_power_ctrl() {
   log += ']';
   LOG(log);
 #endif
-  last_sched_status = t;
 }
