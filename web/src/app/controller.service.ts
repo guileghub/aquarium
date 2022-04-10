@@ -1,12 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
 import { webSocket, WebSocketSubject } from "rxjs/webSocket";
-
-export interface Status {
-	targetTemperature?: number;
-	currentTemperature?: number;
-	power?: boolean;
-}
+import { CurrentPower } from './port-power';
 
 @Injectable({
 	providedIn: 'root'
@@ -15,10 +10,10 @@ export interface Status {
 export class ControllerService {
 	connected: boolean = false;
 	subject: WebSocketSubject<any>;
-	status = new Subject<Status>();
-	status$ = this.status.asObservable();
 	log = new Subject<string>();
 	log$ = this.log.asObservable();
+	ports = new Subject<CurrentPower>();
+	ports$ = this.ports.asObservable();
 	constructor() { }
 	connect(url: string) {
 		this.subject = webSocket({
@@ -48,14 +43,13 @@ export class ControllerService {
 		if (typeof (message) == 'object') {
             if(message.log)
                 this.log.next(message.log);
-            else
-	            this.status.next(message);
+            else if(message.CurrentPower||message.ScheduledPower||message.SelectedPower)
+	            this.ports.next(message);
 			return;
 		}
 		console.error({m:message});
 	}
-	SendMode(value: Status) {
+	Send(value: any) {
 		this.subject.next(value);
-		//console.error(value);
 	}
 }

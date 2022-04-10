@@ -12,6 +12,7 @@ template<class Time, class Record> class Recorder {
     void clear() {
       current = 0, lastRecordEpochTime = 0;
       history.clear();
+      history.reserve(capacity);
     }
   public:
     Recorder(size_t time_interval, size_t capacity) :

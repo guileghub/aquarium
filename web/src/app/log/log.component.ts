@@ -3,7 +3,7 @@ import * as Controller from '../controller.service';
 import { Observable } from 'rxjs';
 
 @Component({
-    selector: 'app-log',
+    selector: 'logs',
     templateUrl: './log.component.html',
     styleUrls: ['./log.component.css']
 })

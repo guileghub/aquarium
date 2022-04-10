@@ -2,7 +2,7 @@
 #include <WebSockets.h>
 #include <WebSocketsServer.h>
 #include <ESP8266WebServer.h>
-#include <ArduinoJson.h>
+
 #include <set>
 
 std::set<uint8_t> web_sock_clients;
@@ -48,12 +48,14 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload,
     case WStype_TEXT:
       {
         Serial.printf("[%u] get Text: %s [%d]\n", num, payload, length);
-        //String message((char*)payload);
-        parse_message(payload, length, num);
+        parse_message(payload, length, [num](String & reply) {
+          if (reply.isEmpty() || !webSocket.clientIsConnected(num))
+            return;
+          webSocket.sendTXT(num, reply);
+        });
         yield();
       }
       break;
-
     case WStype_ERROR:
       Serial.printf("Error [%u] , %s\n", num, payload);
       web_sock_clients.erase(num);
@@ -124,44 +126,6 @@ bool handleFileRead(String path) {
   Log(log);
   yield();
   return false;
-}
-
-void do_reboot();
-
-void parse_message(uint8_t *payload,
-                   size_t length, uint8_t num) {
-  String log;
-  StaticJsonDocument<1024> json;
-  DeserializationError error = deserializeJson(json, payload, length);
-  if (error) {
-    log = "deserializeJson() failed: ";
-    log += error.f_str();
-    Log(log);
-    return;
-  }
-  JsonObject obj = json.as<JsonObject>();
-  if (obj.isNull()) {
-    Log("Error, JSON object expected.");
-    return;
-  }
-  JsonVariant reboot = obj.getMember("reboot");
-  if (reboot.is<bool>() && reboot.as<bool>())
-    do_reboot();
-
-  JsonVariant outputs = obj.getMember("outputs");
-  
-  if (outputs.is<JsonArray>()) {
-    for (int i = 0; i < SCHED_NUM; i++) {
-      JsonVariant output = outputs.getElement(i);
-      if (!output.isNull()) {
-        bool v = output.as<bool>();
-        sched_output[i] = v;
-        power_control(i + 1, sched_output[i]);
-      }
-    }
-    return;
-  }
-  Log("unknown command");
 }
 
 void loop_WEB() {

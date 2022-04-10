@@ -3,8 +3,13 @@
   otherwise the generated funtion declaration will use a include that is included after its definition.
 */
 #include <WebSockets.h>
+#include <ArduinoJson.h>
+#include <TimeLib.h>
 #include "log.hh"
 #define SCHED_NUM 3
+char selected_output[SCHED_NUM] = { 2, 2, 2};
+char sched_output[SCHED_NUM] = { 2, 2, 2};
+char current_output[SCHED_NUM] = { 2, 2, 2};
 
 const char* ssid = "Canopus";
 const char* password = "B@r@lh@d@";
@@ -23,7 +28,7 @@ const char* hostname = "aquarium";
 void do_reboot() {
   ESP.restart();
 }
-
+time_t l;
 void setup() {
   setup_watchdog();
   setup_log();
@@ -35,6 +40,7 @@ void setup() {
   //setup_temp_pid_ctrl();
   setup_WEB();
   yield();
+  l = now();
 }
 
 void loop() {
@@ -48,4 +54,25 @@ void loop() {
   loop_schedule_power_ctrl();
   //loop_pid_ctrl();
   loop_WEB();
+  time_t t = now();
+  if (t == l)
+    return;
+  l = t;
+  if (second(t))
+    return;
+  String log;
+  log += toISOString(t);
+  log += ' ';
+  log += ESP.getChipId();
+  log += "@";
+  log += ESP.getCpuFreqMHz();
+  log += "MHz getResetReason: ";
+  log += ESP.getResetReason();
+  log += " getFreeHeap: ";
+  log += ESP.getFreeHeap();
+  log += " getHeapFragmentation: ";
+  log += ESP.getHeapFragmentation();
+  log += " getMaxFreeBlockSize: ";
+  log += ESP.getMaxFreeBlockSize();
+  Log(log);
 }

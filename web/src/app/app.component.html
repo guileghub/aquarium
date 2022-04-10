@@ -5,5 +5,6 @@
 	<button mat-raised-button (click)="Connect()">Conectar</button>
 </div>
 <div *ngIf="controller.connected">
-<app-log [logs]="controller.log$"></app-log>
+<power-control [portPower]="controller.ports$"></power-control>
+<logs [logs]="controller.log$"></logs>
 </div>
