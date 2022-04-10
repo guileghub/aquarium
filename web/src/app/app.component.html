@@ -4,6 +4,7 @@
 	</mat-form-field>
 	<button mat-raised-button (click)="Connect()">Conectar</button>
 </div>
+<clock [time]="controller.time$"></clock>
 <div *ngIf="controller.connected">
 <power-control [portPower]="controller.ports$"></power-control>
 <logs [logs]="controller.log$"></logs>

@@ -30,13 +30,15 @@ import { TemperatureDisplayComponent } from './temperature-display/temperature-d
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { LogComponent } from './log/log.component';
 import { PowerControlComponent } from './power-control/power-control.component';
+import { ClockComponent } from './clock/clock.component';
 
 @NgModule({
 	declarations: [
 		AppComponent,
 		TemperatureDisplayComponent,
         LogComponent,
-        PowerControlComponent
+        PowerControlComponent,
+        ClockComponent
 	],
 	imports: [
 		...angularmods,

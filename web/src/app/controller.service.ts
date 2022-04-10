@@ -14,6 +14,8 @@ export class ControllerService {
 	log$ = this.log.asObservable();
 	ports = new Subject<CurrentPower>();
 	ports$ = this.ports.asObservable();
+	time = new Subject<Date>();
+	time$ = this.time.asObservable();
 	constructor() { }
 	connect(url: string) {
 		this.subject = webSocket({
@@ -45,6 +47,12 @@ export class ControllerService {
                 this.log.next(message.log);
             else if(message.CurrentPower||message.ScheduledPower||message.SelectedPower)
 	            this.ports.next(message);
+            else if (message.time) try {
+                let d = new Date(message.time);
+                this.time.next(d);
+            } catch (e) {
+                console.log({ timeParseException: e });
+            }
 			return;
 		}
 		console.error({m:message});

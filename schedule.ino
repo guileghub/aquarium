@@ -69,11 +69,19 @@ void setup_schedule_power_ctrl() {
   Serial1.begin(9600);
 }
 
+void broadcast_time(time_t t) {
+  String ts("{\"time\":\"");
+  ts += toISOString(t);
+  ts += "\"}";
+  broadcast_message(ts);
+}
+
 void loop_schedule_power_ctrl() {
   time_t t = now();
   if (t == last_sched_status)
     return;
   last_sched_status = t;
+  broadcast_time(t);
   int h = hour(t);
   int m = minute(t);
   int s = second(t);
@@ -87,6 +95,11 @@ void loop_schedule_power_ctrl() {
     else
       sched_new[x] = sched_output[x];
     if (sched_new[x] != current_output[x]) {
+      current_output[x] = sched_new[x];
+      power_control(x + 1, current_output[x]);
+      break; // 1s between changed for each channel
+    }
+    if (m % 10 == x && s == x) {
       current_output[x] = sched_new[x];
       power_control(x + 1, current_output[x]);
       break; // 1s between changed for each channel
