@@ -1,6 +1,7 @@
 #include <vector>
 #include <TimeLib.h>
 #include <ArduinoJson.h>
+#include "uptime.h"
 
 const int sched_cycle = 60;
 time_t last_sched_status = 0;
@@ -70,9 +71,18 @@ void setup_schedule_power_ctrl() {
 }
 
 void broadcast_time(time_t t) {
-  String ts("{\"time\":\"");
+  String ts(F("{\"time\":\""));
   ts += toISOString(t);
-  ts += "\"}";
+  uptime::calculateUptime();
+  ts += "\",\"uptime\":{\"days\":";
+  ts += uptime::getDays();
+  ts += ",\"hours\":";
+  ts += uptime::getHours();
+  ts += ",\"minutes\":";
+  ts += uptime::getMinutes();
+  ts += ",\"seconds\":";
+  ts += uptime::getSeconds();
+  ts += "}}";
   broadcast_message(ts);
 }
 

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
 import { webSocket, WebSocketSubject } from "rxjs/webSocket";
 import { CurrentPower } from './port-power';
+import { Time } from './time';
 
 @Injectable({
     providedIn: 'root'
@@ -14,7 +15,7 @@ export class ControllerService {
     log$ = this.log.asObservable();
     ports = new Subject<CurrentPower>();
     ports$ = this.ports.asObservable();
-    time = new Subject<Date>();
+    time = new Subject<Time>();
     time$ = this.time.asObservable();
     boardInfo = new Subject<object>();
     boardInfo$ = this.boardInfo.asObservable();
@@ -52,7 +53,7 @@ export class ControllerService {
                 this.ports.next(message);
             else if (message.time) try {
                 let d = new Date(message.time);
-                this.time.next(d);
+                this.time.next({ time: d, uptime: { days: message.uptime.days, hours: message.uptime.hours, minutes: message.uptime.minutes, seconds: message.uptime.seconds } });
             } catch (e) {
                 console.log({ timeParseException: e });
             } else if (message.resetReason)
