@@ -3,8 +3,8 @@
         [(ngModel)]="baseUrl"> </mat-form-field>
     <button mat-raised-button (click)="Connect()">Conectar</button>
 </div>
-<clock [time]="controller.time$"></clock>
 <div *ngIf="controller.connected">
+    <clock [time]="controller.time$"></clock>
     <power-control [portPower]="controller.ports$"></power-control>
     <logs [logs]="controller.log$"></logs>
     <button MatButton (click)="Reboot()">Reboot</button>

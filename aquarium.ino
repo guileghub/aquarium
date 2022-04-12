@@ -10,6 +10,7 @@
 char selected_output[SCHED_NUM] = { 2, 2, 2};
 char sched_output[SCHED_NUM] = { 2, 2, 2};
 char current_output[SCHED_NUM] = { 2, 2, 2};
+typedef time_t time_type;
 
 const char* ssid = "Canopus";
 const char* password = "B@r@lh@d@";

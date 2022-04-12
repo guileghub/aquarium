@@ -54,30 +54,30 @@ template<class Time, class Record> class Recorder {
       }
       updateRecord(t);
     }
-    std::vector<Record> query(Time begin, Time end) {
-      std::vector < Record > result;
+  private:
+    size_t delta2current(size_t d) {
+      return (history.size() + current - d ) % history.size();
+    }
+  public:
+    std::vector<std::pair<Time, Record>> query(Time begin, Time end, bool(*giveup_func)(void) = nullptr) {
+      std::vector<std::pair<Time, Record>> result;
       size_t size = history.size();
       long deltaBegin = (lastRecordEpochTime - begin) / time_interval;
-      if (deltaBegin >= size)
-        return result;
+      if (deltaBegin < 0)
+        deltaBegin = 0;
+      if (deltaBegin + 1 >= size)
+        deltaBegin = size - 1;
       long deltaEnd = (lastRecordEpochTime - end) / time_interval;
-      if (deltaEnd >= size)
+      if (deltaEnd < 0)
+        deltaEnd = 0;
+      if (deltaEnd + 1 >= size)
+        deltaEnd = size - 1;
+      if (deltaBegin < deltaEnd)
         return result;
-      size_t i, e;
-      if (deltaBegin < (size - current)) {
-        i = size - current + deltaBegin;
-      } else {
-        i = deltaBegin + current - size;
-      }
-      if (deltaEnd < (size - current)) {
-        e = size - current + deltaEnd;
-      } else {
-        e = deltaEnd + current - size;
-      }
-      for (; i != e; i++) {
-        result.push_back(history[i]);
-        if (i >= size)
-          i = 0;
+      for (; deltaBegin >= deltaEnd; deltaBegin--, begin += time_interval) {
+        result.push_back(std::make_pair(begin, history[delta2current]));
+        if (giveup_func && (*giveup_func)())
+          break;
       }
       return result;
     }

@@ -1,6 +1,37 @@
 #include <ArduinoJson.h>
+#include <limits>
+#include "Temperature.hh"
 
 void do_reboot();
+
+bool giveup_lowmem() {
+  return ESP.getMaxFreeBlockSize() < 16 * 1024;
+}
+
+void fill_temps(JsonDocument &response, time_type begin, time_type end) {
+  JsonObject temps = response.createNestedObject("temperatures");
+  size_t devs_num = temp_bus.devices.size();
+  JsonObject td[devs_num];
+  for (int i = 0; i < devs_num; i++)
+    td[i] = temps.createNestedObject(temp_bus.devices[i].name);
+  for (int i = 0; i < devs_num; i++) {
+    std::vector<std::pair<time_type, Temperature>> tv = temp_bus.devices[i].history.query(begin, end, giveup_lowmem);
+    for (auto t : tv) {
+      String ts = toISOString(t.first);
+      td[i][ts] = static_cast<float>(t.second);
+      if (response.memoryUsage() + 64 > response.capacity() || ESP.getMaxFreeBlockSize() < 8 * 1024)
+        return;
+    }
+  }
+}
+
+String temperatureQuery(time_type begin, time_type end) {
+  DynamicJsonDocument response(4096);
+  fill_temps(response, begin, end);
+  String message;
+  serializeJson(response, message);
+  return message;
+}
 
 void parse_message(uint8_t *payload, size_t length, std::function<void(String&)>reply) {
   String log;
@@ -44,6 +75,15 @@ void parse_message(uint8_t *payload, size_t length, std::function<void(String&)>
   JsonVariant bi = obj.getMember("BoardInfo");
   if (!bi.isNull()) {
     broadcast_boardinfo();
+    return;
+  }
+  JsonVariant gt = obj.getMember("GetTemperatures").as<JsonObject>();
+  if (!gt.isNull()) {
+    time_type st = 0, et = std::numeric_limits<time_type>::max();
+    String s = gt["Start"] | "";
+    String e = gt["End"] | "";
+    String r = temperatureQuery(st, et);
+    reply(r);
     return;
   }
   Log("unknown command");
