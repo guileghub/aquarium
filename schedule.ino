@@ -2,6 +2,7 @@
 #include <TimeLib.h>
 #include <ArduinoJson.h>
 #include "uptime.h"
+#include "iso_string.hh"
 
 const int sched_cycle = 60;
 time_t last_sched_status = 0;

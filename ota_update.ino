@@ -2,13 +2,14 @@
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
+#include "config.h"
 
 void setup_ota() {
   // Port defaults to 8266
   // ArduinoOTA.setPort(8266);
 
   // Hostname defaults to esp8266-[ChipID]
-  ArduinoOTA.setHostname(hostname);
+  ArduinoOTA.setHostname(HOSTNAME);
 
   // No authentication by default
   // ArduinoOTA.setPassword("admin");

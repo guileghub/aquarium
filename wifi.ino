@@ -1,27 +1,28 @@
-IPAddress local_IP;
-IPAddress gateway;
-IPAddress subnet;
-IPAddress primaryDNS;
-IPAddress secondaryDNS;
+#include "config.h"
 
 void setup_wifi() {
-  Serial.println("\nConfiguring access point...");
+  Serial.println(F("\nConfiguring access point..."));
+  IPAddress local_IP;
+  IPAddress gateway;
+  IPAddress subnet;
+  IPAddress primaryDNS;
+  IPAddress secondaryDNS;
   if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
-    Serial.println("STA Failed to configure");
+    Serial.println(F("STA Failed to configure"));
   }
-  WiFi.setHostname(hostname);
-  Serial.println("WiFi connecting.");
-  WiFi.begin(ssid, password);
+  WiFi.setHostname(HOSTNAME);
+  Serial.println(F("WiFi connecting."));
+  WiFi.begin(F(SSID), F(WLAN_PASSWD));
   /*
     while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
     } */
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.println("Connection Failed! Rebooting...");
+    Serial.println(F("Connection Failed! Rebooting..."));
     ESP.restart();
   }
-  Serial.print("Ready! Use 'http://");
+  Serial.print(F("Ready! Use 'http://"));
   Serial.print(WiFi.localIP());
-  Serial.println("' to connect");
+  Serial.println(F("' to connect"));
 }

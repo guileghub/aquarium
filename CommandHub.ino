@@ -1,6 +1,7 @@
 #include <ArduinoJson.h>
 #include <limits>
-#include "Temperature.hh"
+#include "DS18B20TemperatureMeter.hh"
+#include "iso_string.hh"
 
 void do_reboot();
 
@@ -10,12 +11,12 @@ bool giveup_lowmem() {
 
 void fill_temps(JsonDocument &response, time_type begin, time_type end) {
   JsonObject temps = response.createNestedObject("temperatures");
-  size_t devs_num = temp_bus.devices.size();
+  size_t devs_num = GetTempBus().devices.size();
   JsonObject td[devs_num];
   for (int i = 0; i < devs_num; i++)
-    td[i] = temps.createNestedObject(temp_bus.devices[i].name);
+    td[i] = temps.createNestedObject(GetTempBus().devices[i].name);
   for (int i = 0; i < devs_num; i++) {
-    std::vector<std::pair<time_type, Temperature>> tv = temp_bus.devices[i].history.query(begin, end, giveup_lowmem);
+    std::vector<std::pair<time_type, Temperature>> tv = GetTempBus().devices[i].history.query(begin, end, giveup_lowmem);
     for (auto t : tv) {
       String ts = toISOString(t.first);
       td[i][ts] = static_cast<float>(t.second);

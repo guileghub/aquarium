@@ -3,7 +3,7 @@
 #include <vector>
 #include <TimeLib.h>
 
-template<class Time, class Record> class Recorder {
+template<class Time, class Record> struct Recorder {
     std::vector<Record> history;
     size_t time_interval;
     size_t capacity;
@@ -75,7 +75,7 @@ template<class Time, class Record> class Recorder {
       if (deltaBegin < deltaEnd)
         return result;
       for (; deltaBegin >= deltaEnd; deltaBegin--, begin += time_interval) {
-        result.push_back(std::make_pair(begin, history[delta2current]));
+        result.push_back(std::make_pair(begin, history[delta2current(deltaBegin)]));
         if (giveup_func && (*giveup_func)())
           break;
       }

@@ -6,15 +6,14 @@
 #include <ArduinoJson.h>
 #include <TimeLib.h>
 #include "log.hh"
-#define SCHED_NUM 3
+#include "DS18B20TemperatureMeter.hh"
+
+#include "config.h"
+
 char selected_output[SCHED_NUM] = { 2, 2, 2};
 char sched_output[SCHED_NUM] = { 2, 2, 2};
 char current_output[SCHED_NUM] = { 2, 2, 2};
 typedef time_t time_type;
-
-const char* ssid = "Canopus";
-const char* password = "B@r@lh@d@";
-const char* hostname = "aquarium";
 
 // 1 week
 #define TEMP_HIST_LEN (7*24*60/5)
