@@ -3,7 +3,7 @@
 #include <TimeLib.h>
 
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "br.pool.ntp.org", 0 * 3600, 60000 * 10); // update every 10 min
+NTPClient timeClient(ntpUDP, NTP_SERVER, 0 * 3600, 60000 * 10); // update every 10 min
 
 long long EpochTime() {
   return timeClient.getEpochTime();

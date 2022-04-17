@@ -1,7 +1,7 @@
 #include <ArduinoJson.h>
 #include <limits>
 #include "DS18B20TemperatureMeter.hh"
-#include "iso_string.hh"
+#include "iso_time.hh"
 
 void do_reboot();
 
@@ -18,7 +18,7 @@ void fill_temps(JsonDocument &response, time_type begin, time_type end) {
   for (int i = 0; i < devs_num; i++) {
     std::vector<std::pair<time_type, Temperature>> tv = GetTempBus().devices[i].history.query(begin, end, giveup_lowmem);
     for (auto t : tv) {
-      String ts = toISOString(t.first);
+      String ts = time_t_2_iso(t.first);
       td[i][ts] = static_cast<float>(t.second);
       if (response.memoryUsage() + 64 > response.capacity() || ESP.getMaxFreeBlockSize() < 8 * 1024)
         return;

@@ -5,6 +5,7 @@
 #define SSID "Canopus"
 #define WLAN_PASSWD "B@r@lh@d@"
 #define HOSTNAME "aquarium"
+#define NTP_SERVER "br.pool.ntp.org"
 
 // 1 week
 #define TEMP_HIST_LEN (7*24*60/5)
