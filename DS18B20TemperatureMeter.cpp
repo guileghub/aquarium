@@ -1,6 +1,6 @@
 #include "DS18B20TemperatureMeter.hh"
 #include <TimeLib.h>
-#include "iso_string.hh"
+#include "iso_time.hh"
 
 time_t last_temp = 0;
 
@@ -116,7 +116,7 @@ void loop_temp_record() {
     Temperature t(tempC);
 #ifdef LOG
     if (0 == second(time_epoch) % 5) {
-      String log = toISOString(time_epoch);
+      String log = time_t_2_iso(time_epoch);
       log += " Temperature[";
       log += GetTempBus().devices[i].name;
       log += "]=";
@@ -129,7 +129,7 @@ void loop_temp_record() {
     if (!second(time_epoch)) {
       GetTempBus().devices[i].history.record(t, time_epoch);
 #ifdef LOG
-      String log = toISOString(time_epoch);
+      String log = time_t_2_iso(time_epoch);
       log += " GetTempBus().devices[";
       log += GetTempBus().devices[i].name;
       log += "].history records:";

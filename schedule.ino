@@ -2,7 +2,7 @@
 #include <TimeLib.h>
 #include <ArduinoJson.h>
 #include "uptime.h"
-#include "iso_string.hh"
+#include "iso_time.hh"
 
 const int sched_cycle = 60;
 time_t last_sched_status = 0;
@@ -73,7 +73,7 @@ void setup_schedule_power_ctrl() {
 
 void broadcast_time(time_t t) {
   String ts(F("{\"time\":\""));
-  ts += toISOString(t);
+  ts += time_t_2_iso(t);
   uptime::calculateUptime();
   ts += "\",\"uptime\":{\"days\":";
   ts += uptime::getDays();
@@ -120,7 +120,7 @@ void loop_schedule_power_ctrl() {
     return;
   broadcast_ports();
 #ifdef LOG
-  String log = toISOString(t);
+  String log = time_t_2_iso(t);
   log += " loop_schedule_power_ctrl: [";
   for (unsigned x = 0; x < SCHED_NUM; x++) {
     if (x) log += ',';
