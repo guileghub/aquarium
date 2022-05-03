@@ -2,6 +2,7 @@
 #define RECORDER_HH
 #include <vector>
 #include <TimeLib.h>
+#include "log.hh"
 
 template<class Time, class Record> struct Recorder {
     std::vector<Record> history;
@@ -38,46 +39,74 @@ template<class Time, class Record> struct Recorder {
     }
 
     void record(Record const& t, Time epochTime) {
-      if (epochTime < lastRecordEpochTime)
+      String log;
+      log = "record(epochTime=";
+      log += epochTime;
+      log += ") size=";
+      log += history.size();
+      LOG(log);
+
+      if (epochTime < lastRecordEpochTime) {
+        log = "epochTime < lastRecordEpochTime";
+        LOG(log);
         clear();
+      }
       if (!lastRecordEpochTime)
         lastRecordEpochTime = epochTime;
       unsigned long gap = (epochTime - lastRecordEpochTime) / time_interval;
       if (gap >= capacity) {
+        log = "gap >= capacity";
+        LOG(log);
         clear();
         gap = 0;
       }
       if (gap) {
         while (gap--)
-          addRecord (Record());
-        lastRecordEpochTime = epochTime;
+          addRecord(t);
       }
       updateRecord(t);
+      lastRecordEpochTime = epochTime;
     }
   private:
     size_t delta2current(size_t d) {
       return (history.size() + current - d ) % history.size();
     }
   public:
-    std::vector<std::pair<Time, Record>> query(Time begin, Time end, bool(*giveup_func)(void) = nullptr) {
+    std::vector<std::pair<Time, Record>> query(Time pastBegin, Time pastEnd, bool(*giveup_func)(void) = nullptr) {
       std::vector<std::pair<Time, Record>> result;
       size_t size = history.size();
-      long deltaBegin = (lastRecordEpochTime - begin) / time_interval;
-      if (deltaBegin < 0)
-        deltaBegin = 0;
-      if (deltaBegin + 1 >= size)
-        deltaBegin = size - 1;
-      long deltaEnd = (lastRecordEpochTime - end) / time_interval;
-      if (deltaEnd < 0)
-        deltaEnd = 0;
-      if (deltaEnd + 1 >= size)
-        deltaEnd = size - 1;
-      if (deltaBegin < deltaEnd)
+      if (size <= 0)
         return result;
-      for (; deltaBegin >= deltaEnd; deltaBegin--, begin += time_interval) {
-        result.push_back(std::make_pair(begin, history[delta2current(deltaBegin)]));
-        if (giveup_func && (*giveup_func)())
+      Time deltaPastBegin = 0;
+      if (pastBegin < lastRecordEpochTime)
+        deltaPastBegin = (lastRecordEpochTime - pastBegin) / time_interval;
+      if (deltaPastBegin + 1 >= size)
+        deltaPastBegin = size - 1;
+      Time deltaPastEnd = size - 1;
+      if (pastEnd < lastRecordEpochTime)
+        deltaPastEnd = (lastRecordEpochTime - pastEnd) / time_interval;
+      if (deltaPastEnd + 1 >= size)
+        deltaPastEnd = size - 1;
+      if (deltaPastBegin < deltaPastEnd)
+        return result;
+      String log;
+      log += "size=";
+      log += size;
+      log += " deltaPastBegin=";
+      log += deltaPastBegin;
+      log += " deltaPastEnd=";
+      log += deltaPastEnd;
+      log += " lastRecordEpochTime=";
+      log += lastRecordEpochTime;
+      LOG(log);
+      for (Time i = deltaPastBegin; i >= deltaPastEnd; i--) {
+        Time record_time = lastRecordEpochTime - (i * time_interval);
+        result.push_back(std::make_pair(record_time, history[delta2current(i)]));
+        if (giveup_func && (*giveup_func)()) {
+          log = "giving up";
+          LOG(log);
           break;
+        }
       }
       return result;
     }

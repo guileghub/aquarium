@@ -9,5 +9,6 @@
     <logs [logs]="controller.log$"></logs>
     <button MatButton (click)="Reboot()">Reboot</button>
     <button MatButton (click)="BoardInfo()">Get Board Info</button>
+    <button MatButton (click)="GetTemperatures()">Get Temperature</button>
     <div *ngIf="boardInfo$">{{boardInfo$|async|json}}</div>
 </div>

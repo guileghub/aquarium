@@ -19,7 +19,7 @@ export class AppComponent implements OnInit, OnDestroy {
     }
     ngOnInit() {
         this.baseUrl = window.location.origin.replace("http:", "ws:") + ":81";
-        this.baseUrl = "ws://10.0.0.222:81";
+        //this.baseUrl = "ws://aquarium:81";
         this.Connect();
     }
     ngOnDestroy() {
@@ -32,5 +32,8 @@ export class AppComponent implements OnInit, OnDestroy {
     }
     BoardInfo() {
         this.controller.Send({ BoardInfo: true });
+    }
+    GetTemperatures(){
+        this.controller.Send({ GetTemperatures: {Start: "", End: ""} });
     }
 }

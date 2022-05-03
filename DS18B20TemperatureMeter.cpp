@@ -72,35 +72,6 @@ DallasTempBus::DallasTempBus():
   }
 }
 
-#if 0
-void fill_temps(JsonDocument &response, time_type begin, time_type end) {
-  //week temp records
-  JsonObject temps = response.createNestedObject("temperatures");
-  size_t devs_num = devices.size();
-  JsonArray td[devs_num];
-  for (int i = 0; i < devs_num; i++)
-    td[i] = temps.createNestedArray(devices[i].name);
-  for (int i = 0; i < devs_num; i++) {
-    std::vector<TemperatureRecord> tv = devices[i].history.query(begin, end);
-    for (auto t : tv) {
-      td[i].add(static_cast<float>(t));
-      if (response.memoryUsage() + 64 > response.capacity())
-        return;
-    }
-  }
-}
-
-void temperatureUpdate(time_type time_epoch) {
-  if (!connected)
-    return;
-  DynamicJsonDocument response(4096);
-  // fill_temps(response, time_epoch - 60, time_epoch);
-  String message;
-  serializeJson(response, message);
-  webSocket.broadcastTXT(message);
-}
-#endif
-
 void setup_temp_record() {
 
 }
@@ -139,7 +110,6 @@ void loop_temp_record() {
     }
   }
   GetTempBus().dallas_temp.requestTemperatures();
-  //temperatureUpdate(time_epoch);
   last_temp = time_epoch;  //Remember the last time measurement
 }
 
