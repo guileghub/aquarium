@@ -2,12 +2,13 @@
   includes needed to define function prototypes must be included here, in order to appear in the beginning of the arduino concatenated file.
   otherwise the generated funtion declaration will use a include that is included after its definition.
 */
-#include <WebSockets.h>
+#include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 #include <TimeLib.h>
 #include "log.hh"
 #include "DS18B20TemperatureMeter.hh"
-
+#include <esp_system.h>
+#include <rom/rtc.h>
 #include "config.h"
 
 char selected_output[SCHED_NUM] = { 2, 2, 2};
@@ -15,28 +16,42 @@ char sched_output[SCHED_NUM] = { 2, 2, 2};
 char current_output[SCHED_NUM] = { 2, 2, 2};
 typedef time_t time_type;
 
-// 1 week
-#define TEMP_HIST_LEN (60)
-// @5min
-#define TEMP_HIST_PERIOD 60
-#define TEMPERATURE_ONE_WIRE_BUS_PIN D2
-#define TEMP_PID_CTRL_OUTPUT_PIN D5
-
-// Interno: 2840e363121901e2
-// Externo: 289a9a7512190146
-
 void do_reboot() {
   ESP.restart();
 }
 
+char *const reset_reason(RESET_REASON reason)
+{
+  switch ( reason)
+  {
+    case 1  : return "Vbat power on reset";
+    case 3  : return "Software reset digital core";
+    case 4  : return "Legacy watch dog reset digital core";
+    case 5  : return "Deep Sleep reset digital core";
+    case 6  : return "Reset by SLC module, reset digital core";
+    case 7  : return "Timer Group0 Watch dog reset digital core";
+    case 8  : return "Timer Group1 Watch dog reset digital core";
+    case 9  : return "RTC Watch dog Reset digital core";
+    case 10 : return "Instrusion tested to reset CPU";
+    case 11 : return "Time Group reset CPU";
+    case 12 : return "Software reset CPU";
+    case 13 : return "RTC Watch dog Reset CPU";
+    case 14 : return "for APP CPU, reseted by PRO CPU";
+    case 15 : return "Reset when the vdd voltage is not stable";
+    case 16 : return "RTC Watch dog reset digital core and rtc module";
+    default : return "Unknown";
+  }
+}
+
 void broadcast_boardinfo() {
   DynamicJsonDocument bi(1024);
-  bi["chipId"] = ESP.getChipId();
+  //bi["chipId"] = ESP.getChipId();
   bi["cpuFreqMHz"] = ESP.getCpuFreqMHz();
-  bi["resetReason"] = ESP.getResetReason();
+  bi["resetReason"] = reset_reason(rtc_get_reset_reason(0));
+  bi["resetReason1"] = reset_reason(rtc_get_reset_reason(1));
   bi["freeHeap"] = ESP.getFreeHeap();
-  bi["heapFragmentation"] = ESP.getHeapFragmentation();
-  bi["maxFreeBlockSize"] = ESP.getMaxFreeBlockSize();
+//  bi["heapFragmentation"] = ESP.getHeapFragmentation();
+//  bi["maxFreeBlockSize"] = ESP.getMaxFreeBlockSize();
   String m;
   serializeJson(bi, m);
   broadcast_message(m);

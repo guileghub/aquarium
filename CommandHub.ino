@@ -1,4 +1,5 @@
 #include <ArduinoJson.h>
+#include <AsyncJson.h>
 #include <limits>
 #include "DS18B20TemperatureMeter.hh"
 #include "iso_time.hh"
@@ -45,7 +46,7 @@ String temperatureQuery(time_type begin, time_type end) {
   return message;
 }
 
-void parse_message(uint8_t *payload, size_t length, std::function<void(String&)>reply) {
+void parse_message(char const *payload, size_t length, std::function<void(String&)>reply) {
   String log;
   StaticJsonDocument<1024> json;
   DeserializationError error = deserializeJson(json, payload, length);

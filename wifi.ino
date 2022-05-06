@@ -12,7 +12,7 @@ void setup_wifi() {
   }
   WiFi.setHostname(HOSTNAME);
   Serial.println(F("WiFi connecting."));
-  WiFi.begin(F(SSID), F(WLAN_PASSWD));
+  WiFi.begin(SSID, WLAN_PASSWD);
   /*
     while (WiFi.status() != WL_CONNECTED) {
     delay(500);

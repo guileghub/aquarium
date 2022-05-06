@@ -1,4 +1,5 @@
 #include <ostream>
+#include <sstream>
 #include <iomanip>
 #include <ios>
 #include <TimeLib.h>

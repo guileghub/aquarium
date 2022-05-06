@@ -18,7 +18,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.boardInfo$ = this.controller.boardInfo$;
     }
     ngOnInit() {
-        this.baseUrl = window.location.origin.replace("http:", "ws:") + ":81";
+        this.baseUrl = window.location.origin.replace("http:", "ws:") + "/aquarium";
         //this.baseUrl = "ws://aquarium:81";
         this.Connect();
     }
