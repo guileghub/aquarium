@@ -3,9 +3,11 @@
   otherwise the generated funtion declaration will use a include that is included after its definition.
 */
 // ARDUINO_ESP32_DEV -DARDUINO_ARCH_ESP32 "-DARDUINO_BOARD=\"ESP32_DEV\"" "-DARDUINO_VARIANT=\"doitESP32devkitV1\"" -DESP32
-// -DARDUINO=10819 -DARDUINO_ESP8266_NODEMCU_ESP12E -DARDUINO_ARCH_ESP8266 "-DARDUINO_BOARD=\"ESP8266_NODEMCU_ESP12E\"" -DLED_BUILTIN=2 -DFLASHMODE_DIO -DESP8266 
+// -DARDUINO=10819 -DARDUINO_ESP8266_NODEMCU_ESP12E -DARDUINO_ARCH_ESP8266 "-DARDUINO_BOARD=\"ESP8266_NODEMCU_ESP12E\"" -DLED_BUILTIN=2 -DFLASHMODE_DIO -DESP8266
 #ifdef ARDUINO_ARCH_ESP8266
-#else defined(DARDUINO_ARCH_ESP32)
+#elif defined(ARDUINO_ARCH_ESP32)
+#include <esp_system.h>
+#include <rom/rtc.h>
 #else Error board not supported
 #endif
 #include <ESPAsyncWebServer.h>
@@ -13,8 +15,6 @@
 #include <TimeLib.h>
 #include "log.hh"
 #include "DS18B20TemperatureMeter.hh"
-#include <esp_system.h>
-#include <rom/rtc.h>
 #include "config.h"
 
 char selected_output[SCHED_NUM] = { 2, 2, 2};
@@ -26,6 +26,7 @@ void do_reboot() {
   ESP.restart();
 }
 
+#ifdef ARDUINO_ARCH_ESP32
 char *const reset_reason(RESET_REASON reason)
 {
   switch ( reason)
@@ -48,16 +49,22 @@ char *const reset_reason(RESET_REASON reason)
     default : return "Unknown";
   }
 }
+#endif
 
 void broadcast_boardinfo() {
   DynamicJsonDocument bi(1024);
-  //bi["chipId"] = ESP.getChipId();
+#ifdef ARDUINO_ARCH_ESP8266
+  bi["chipId"] = ESP.getChipId();
+  bi["heapFragmentation"] = ESP.getHeapFragmentation();
+  bi["maxFreeBlockSize"] = ESP.getMaxFreeBlockSize();
+  bi["resetReason"] = ESP.getResetReason();
+#endif
   bi["cpuFreqMHz"] = ESP.getCpuFreqMHz();
+#ifdef ARDUINO_ARCH_ESP32
   bi["resetReason"] = reset_reason(rtc_get_reset_reason(0));
   bi["resetReason1"] = reset_reason(rtc_get_reset_reason(1));
+#endif
   bi["freeHeap"] = ESP.getFreeHeap();
-//  bi["heapFragmentation"] = ESP.getHeapFragmentation();
-//  bi["maxFreeBlockSize"] = ESP.getMaxFreeBlockSize();
   String m;
   serializeJson(bi, m);
   broadcast_message(m);

@@ -1,9 +1,15 @@
 #include <set>
 #include <FS.h>
+
+#ifdef ARDUINO_ARCH_ESP8266
+#include <WebSockets.h>
+#include <WebSocketsServer.h>
+#elif defined(ARDUINO_ARCH_ESP32)
 #include "SPIFFS.h"
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <ESPmDNS.h>
+#endif
 
 std::set<uint8_t> web_sock_clients;
 AsyncWebServer server(80);

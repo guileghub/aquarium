@@ -1,9 +1,15 @@
-#include <WiFi.h>
-#include <ESPmDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 #include "config.h"
+
+#ifdef ARDUINO_ARCH_ESP8266
+#include <ESP8266WiFi.h>
+#include <ESP8266mDNS.h>
+#elif defined(ARDUINO_ARCH_ESP32)
 #include "SPIFFS.h"
+#include <WiFi.h>
+#include <ESPmDNS.h>
+#endif
 
 void setup_ota() {
   // Port defaults to 8266
