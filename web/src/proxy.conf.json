@@ -1,0 +1,6 @@
+{
+  "/aquarium": {
+    "target": "http://aquarium_esp32/aquarium",
+    "secure": false
+  }
+}

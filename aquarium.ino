@@ -2,6 +2,12 @@
   includes needed to define function prototypes must be included here, in order to appear in the beginning of the arduino concatenated file.
   otherwise the generated funtion declaration will use a include that is included after its definition.
 */
+// ARDUINO_ESP32_DEV -DARDUINO_ARCH_ESP32 "-DARDUINO_BOARD=\"ESP32_DEV\"" "-DARDUINO_VARIANT=\"doitESP32devkitV1\"" -DESP32
+// -DARDUINO=10819 -DARDUINO_ESP8266_NODEMCU_ESP12E -DARDUINO_ARCH_ESP8266 "-DARDUINO_BOARD=\"ESP8266_NODEMCU_ESP12E\"" -DLED_BUILTIN=2 -DFLASHMODE_DIO -DESP8266 
+#ifdef ARDUINO_ARCH_ESP8266
+#else defined(DARDUINO_ARCH_ESP32)
+#else Error board not supported
+#endif
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 #include <TimeLib.h>
